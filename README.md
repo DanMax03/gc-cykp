@@ -1,4 +1,5 @@
-# Formal Language Parsing and Recognition Collection - FLPaR 
+# gc-cykp - Grammar Converter and CYK Parser
 ## Description
-ChomskyConverter (chom-conv) is a program to convert context-arbitrary form to the Chomsky form
-CYKRecognizer(cyk-recog) is a program which takes 
+The program works with context-free grammars and has 2 modes:
+ - Grammar convertation. Takes a context-free grammar in any form and converts it into the Chomsky form.
+ - Text recognition. Takes a context-free grammar and a text, converts the grammar to Chomsky form and executes Cocke-Younger-Kasami algorithm.
