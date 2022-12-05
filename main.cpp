@@ -1,7 +1,12 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <optional>
+
+#include "ParsedArguments.h"
+#include "Talker.h"
+#include "execConvertation.h"
+#include "execRecognition.h"
+
 
 constexpr const char* const help_string =
 "gc-cykp: Grammar Converter and CYK Parser\n"
@@ -14,80 +19,82 @@ constexpr const char* const help_string =
 "   -C - convertation only mode\n"
 "   -s - save a converted grammar in a file\n";
 
-struct ParsedArguments {
-    enum class ProgramMode {
-        k_Unknown,
-        k_Recognition,
-        k_Convertation
-    };
+constexpr const char* const term_string = "The program has interrupted its execution: ";
 
-    bool need_help = false;
-    bool is_already_converted = false;
-    ProgramMode mode;
-    std::optional<int> convertation_end_phase = std::nullopt;
-    std::optional<std::string> text_filename = std::nullopt;
-    std::optional<std::string> grammar_filename = std::nullopt;
-    std::optional<std::string> converted_grammar_filename = std::nullopt;
-};
+constexpr const char* const final_string = "For more information, execute the program with \"-h\" flag.\n";
 
-void parseArguments(ParsedArguments& pargs, std::vector<std::string> &args) {
-    for (size_t i = 0; i < args.size(); ++i) {
+
+void parseArguments(ci::ParsedArguments& pargs, std::vector<std::string> &args) {
+    size_t i;
+
+    for (i = 0; i + 1 < args.size(); ++i) {
         if (args[i][0] != '-' || args[i].size() < 2) {
-            pargs.mode = ParsedArguments::ProgramMode::k_Unknown;
+            pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
             return;
         }
 
-        switch (args[i][1]) {
-            case 'h': {
-                pargs.need_help = true;
-                break;
-            }
-
-            case 'R': {
-                pargs.mode = ParsedArguments::ProgramMode::k_Recognition;
-
-                try {
-                    pargs.text_filename = args.at(i + 1);
+        try {
+            switch (args[i][1]) {
+                case 'h': {
+                    pargs.need_help = true;
+                    break;
                 }
-                catch (...) {
-                    pargs.mode = ParsedArguments::ProgramMode::k_Unknown;
+    
+                case 'R': {
+                    pargs.mode = ci::ParsedArguments::ProgramMode::k_Recognition; 
+                    ++i;
+                    pargs.text_filename = args.at(i);
+                    break;
+                }
+
+                case 'n': {
+                    pargs.is_already_converted = true;
+                    break;
+                }
+    
+                case 'C': {
+                    pargs.mode = ci::ParsedArguments::ProgramMode::k_Convertation;
+                    ++i;
+                    pargs.convertation_end_phase = stoi(args.at(i));
+                    if (pargs.convertation_end_phase < 0) throw;
+                    break;
+                }
+    
+                case 's': {
+                    ++i;
+                    pargs.converted_grammar_filename = args.at(i);
+                    break;
+                }
+    
+                default: {
+                    pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
                     return;
                 }
-
-                break;
-            }
-
-            case 'C': {
-                pargs.mode = ParsedArguments::ProgramMode::k_Convertation;
-
-                try {
-                    pargs.convertation_end_phase = stoi(args.at(i + 1));
-                }
-                catch (...) {
-                    pargs.mode = ParsedArguments::ProgramMode::k_Unknown;
-                    return;
-                }
-
-                break;
-            }
-
-            case 's': {
-                break;
-            }
-
-            default: {
-                pargs.mode = ParsedArguments::ProgramMode::k_Unknown;
-                return;
             }
         }
+        catch (...) {
+            pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
+            return;
+        }
     }
+
+    if (i == args.size()) {
+        pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
+        return;
+    }
+
+    pargs.grammar_filename = args.back();
 }
 
+
 int main(int argc, char* argv[]) {
+    ci::Talker talker{.help_string = help_string,
+                      .termination_string = term_string,
+                      .final_string = final_string};
+
     if (argc == 1) {
-        std::cout << "The program interrupted its execution: no arguments provided.\n"
-                "For more information, execute the program with \"-h\" flag.\n";
-        return 0;
+        talker.sendTerminationMessage("no arguments provided.\n");
+        return 1;
     }
 
     std::vector<std::string> args;
@@ -97,24 +104,26 @@ int main(int argc, char* argv[]) {
         args.push_back(argv[i]);
     }
 
-    ParsedArguments pargs;
+    ci::ParsedArguments pargs;
 
     parseArguments(pargs, args);
 
     if (pargs.need_help) {
-        std::cout << help_string;
+        talker.sendHelpMessage();
         return 0;
     }
 
     switch (pargs.mode) {
-        case ParsedArguments::ProgramMode::k_Convertation:
+        case ci::ParsedArguments::ProgramMode::k_Convertation:
+            details::execConvertation(pargs);
             break;
-        case ParsedArguments::ProgramMode::k_Recognition:
+        case ci::ParsedArguments::ProgramMode::k_Recognition:
+            details::execRecognition(pargs);
             break;
         default:
-            std::cout << "The program interrupted its execution: incorrect arguments.\n"
-                    "Please follow the patterns provided on the help page. You can pass"
-                    " -h argument to print it.\n";
+            talker.sendTerminationMessage("incorrect arguments.\n"
+                                          "Please, follow the patterns provided on the help page. ");
+            return 1;
     }
 
     return 0;
