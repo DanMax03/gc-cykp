@@ -19,18 +19,16 @@ constexpr const char* const help_string =
 "   -C - convertation only mode\n"
 "   -s - save a converted grammar in a file\n";
 
-constexpr const char* const term_string = "The program has interrupted its execution: ";
-
-constexpr const char* const final_string = "For more information, execute the program with \"-h\" flag.\n";
-
 
 void parseArguments(ci::ParsedArguments& pargs, std::vector<std::string> &args) {
-    size_t i;
-
-    for (i = 0; i + 1 < args.size(); ++i) {
-        if (args[i][0] != '-' || args[i].size() < 2) {
-            pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
-            return;
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (args[i][0] != '-') {
+            if (i + 1 == args.size()) {
+                pargs.grammar_filename = args[i];
+            } else if (args[i].size() < 2) {
+                pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
+                return;
+            }
         }
 
         try {
@@ -42,8 +40,12 @@ void parseArguments(ci::ParsedArguments& pargs, std::vector<std::string> &args) 
     
                 case 'R': {
                     pargs.mode = ci::ParsedArguments::ProgramMode::k_Recognition; 
+
+                    if (args.at(i + 1)[0] == '-') throw 1;
+
                     ++i;
-                    pargs.text_filename = args.at(i);
+                    pargs.text_filename = args[i];
+
                     break;
                 }
 
@@ -54,9 +56,14 @@ void parseArguments(ci::ParsedArguments& pargs, std::vector<std::string> &args) 
     
                 case 'C': {
                     pargs.mode = ci::ParsedArguments::ProgramMode::k_Convertation;
+
+                    if (args.at(i + 1)[0] == '-') throw 1;
+
                     ++i;
-                    pargs.convertation_end_phase = stoi(args.at(i));
-                    if (pargs.convertation_end_phase < 0) throw;
+                    pargs.convertation_end_phase = stoi(args[i]);
+
+                    if (pargs.convertation_end_phase < 0) throw 1;
+
                     break;
                 }
     
@@ -77,20 +84,11 @@ void parseArguments(ci::ParsedArguments& pargs, std::vector<std::string> &args) 
             return;
         }
     }
-
-    if (i == args.size()) {
-        pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
-        return;
-    }
-
-    pargs.grammar_filename = args.back();
 }
 
 
 int main(int argc, char* argv[]) {
-    ci::Talker talker{.help_string = help_string,
-                      .termination_string = term_string,
-                      .final_string = final_string};
+    ci::Talker talker{.help_string = help_string};
 
     if (argc == 1) {
         talker.sendTerminationMessage("no arguments provided.\n");
@@ -113,18 +111,24 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    if (pargs.grammar_filename == std::string()) {
+        talker.sendTerminationMessage("hasn't found a grammar filename.\n Note that it must be the last argument of the execution command.\n");
+    }
+   
+    int ret_value = 0;
+
     switch (pargs.mode) {
         case ci::ParsedArguments::ProgramMode::k_Convertation:
-            details::execConvertation(pargs);
+            ret_value = details::execConvertation(pargs);
             break;
         case ci::ParsedArguments::ProgramMode::k_Recognition:
-            details::execRecognition(pargs);
+            ret_value = details::execRecognition(pargs);
             break;
         default:
             talker.sendTerminationMessage("incorrect arguments.\n"
                                           "Please, follow the patterns provided on the help page. ");
-            return 1;
+            ret_value = 1;
     }
 
-    return 0;
+    return ret_value;
 }

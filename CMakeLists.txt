@@ -4,11 +4,11 @@ project(untitled)
 
 set(CMAKE_CXX_STANDARD 17)
 
-
-
 add_executable(${PROJECT_NAME}
         main.cpp
         src/Talker.cpp
+        src/Grammar.cpp
+        src/ChomskyFormConvertation.cpp
         src/execConvertation.cpp
         src/execRecognition.cpp)
 

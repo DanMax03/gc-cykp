@@ -5,6 +5,11 @@
 
 namespace ci {
 
+    constexpr const char* const std_term_string = "The program has interrupted its execution: ";
+    
+    constexpr const char* const std_final_string = "For more information, execute the program with \"-h\" flag.\n";
+
+
     struct Talker {
         void sendMessage(const char* c_str, bool add_final_string = false) const;
         void sendHelpMessage() const;
@@ -12,8 +17,8 @@ namespace ci {
     
         std::ostream& out = std::cout;
         const char* help_string = nullptr;
-        const char* termination_string = nullptr;
-        const char* final_string = nullptr;
+        const char* termination_string = std_term_string;
+        const char* final_string = std_final_string;
     };
 
 }  // namespace ci

@@ -17,7 +17,7 @@ namespace ci {
         ProgramMode mode = ProgramMode::k_Unknown;
         std::optional<int> convertation_end_phase = std::nullopt;
         std::optional<std::string> text_filename = std::nullopt;
-        std::optional<std::string> grammar_filename = std::nullopt;
+        std::string grammar_filename;
         std::optional<std::string> converted_grammar_filename = std::nullopt;
     };
    

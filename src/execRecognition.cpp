@@ -4,7 +4,7 @@
 
 namespace details {
     [[nodiscard]] int execRecognition(const ci::ParsedArguments& pargs) {
-        
+        return 0;
     }
 }  // namespace details
 
