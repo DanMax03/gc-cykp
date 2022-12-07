@@ -1,0 +1,3 @@
+input : "" | line ;
+line : "joke
+another : "joke" ;

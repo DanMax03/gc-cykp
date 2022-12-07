@@ -1,0 +1,8 @@
+input : "" ;
+input : "abc" ;
+line : "test"
+     | "magic"
+     ;
+input : "why"
+      | "how"
+      ;

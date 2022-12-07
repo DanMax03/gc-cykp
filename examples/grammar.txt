@@ -1,0 +1,11 @@
+# This is a test grammar
+input : ""
+      | line
+      ;
+
+             # have no idea if this works
+
+line : "(" line ")"
+     | "(" line ")(" line ")"
+     | ""
+     ;

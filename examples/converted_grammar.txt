@@ -1,0 +1,9 @@
+input
+: "" 
+| line 
+;
+line
+: "(" line ")" 
+| "(" line ")(" line ")" 
+| "" 
+;

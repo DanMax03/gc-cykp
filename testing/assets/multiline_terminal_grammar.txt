@@ -1,0 +1,6 @@
+input : "" | line ;
+line : "will "
+       "you "
+       "work "
+       "correctly?"
+     | "(" line ")" ;

@@ -27,8 +27,8 @@ void parseArguments(ci::ParsedArguments& pargs, std::vector<std::string> &args) 
                 pargs.grammar_filename = args[i];
             } else if (args[i].size() < 2) {
                 pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
-                return;
             }
+            return;
         }
 
         try {
@@ -74,12 +74,14 @@ void parseArguments(ci::ParsedArguments& pargs, std::vector<std::string> &args) 
                 }
     
                 default: {
+                    std::cout << "Entered default\n";
                     pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
                     return;
                 }
             }
         }
         catch (...) {
+            std::cout << "Entered catch\n";
             pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
             return;
         }
@@ -112,7 +114,10 @@ int main(int argc, char* argv[]) {
     }
 
     if (pargs.grammar_filename == std::string()) {
-        talker.sendTerminationMessage("hasn't found a grammar filename.\n Note that it must be the last argument of the execution command.\n");
+        talker.sendTerminationMessage("hasn't found a grammar filename.\n"
+                                      "Note that it must be the last "
+                                      "argument of the execution command.\n");
+        return 1;
     }
    
     int ret_value = 0;

@@ -1,0 +1,11 @@
+# Here I've wrote a comment without '#' symbol
+
+input : ""
+      | line
+      ;
+
+I don't know why I have written this
+
+line : ""
+     : "abc" line
+     ;

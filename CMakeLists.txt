@@ -1,11 +1,18 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(untitled)
+project(gc-cykp)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(${PROJECT_NAME}
+option(BUILD_TESTS "Ask cmake to build unit tests")
+
+
+add_executable(${PROJECT_NAME})
+
+target_sources(${PROJECT_NAME}
+    PRIVATE
         main.cpp
+    PUBLIC
         src/Talker.cpp
         src/Grammar.cpp
         src/ChomskyFormConvertation.cpp
@@ -13,5 +20,18 @@ add_executable(${PROJECT_NAME}
         src/execRecognition.cpp)
 
 target_include_directories(${PROJECT_NAME}
-        PUBLIC include)
+    PUBLIC
+        "${PROJECT_SOURCE_DIR}/include")
+
+target_compile_options(${PROJECT_NAME}
+    PUBLIC -g)
+
+set_target_properties(${PROJECT_NAME}
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
+
+
+if (${BUILD_TESTS})
+    add_subdirectory("${PROJECT_SOURCE_DIR}/testing")
+endif()
 

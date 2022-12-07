@@ -26,6 +26,8 @@ namespace details {
                 throw std::invalid_argument("the grammar path is incorrect.\n");
             }
 
+            fin >> g;
+
             if (pargs.converted_grammar_filename) {
                 fout.open(pargs.converted_grammar_filename.value());
 
@@ -33,8 +35,7 @@ namespace details {
                     throw std::invalid_argument("the path for a converted grammar is incorrect.\n");
                 }
             }
-            
-            fin >> g;
+
 
             convertToChomskyForm(g);
 
