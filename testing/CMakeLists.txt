@@ -38,3 +38,12 @@ set_target_properties(${PROJECT_NAME}
     PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${PARENT_RUNTIME_OUTPUT_DIR}")
 
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/CMakeModules")
+
+if (CMAKE_COMPILER_IS_GNUCXX)
+    set(CODE_COVERAGE_VERBOSE ON)
+    include(CodeCoverage)
+    setup_target_for_coverage_lcov(
+        NAME ${PARENT_PROJECT_NAME}_coverage
+        EXECUTABLE ${PROJECT_NAME})
+endif()

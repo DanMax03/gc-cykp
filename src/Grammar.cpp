@@ -1,6 +1,6 @@
 #include "Grammar.h"
 
-#include <stack>
+#include <queue>
 #include <set>
 #include <string_view>
 
@@ -11,9 +11,6 @@ namespace {
         k_Nonterminal,
         k_Terminal
     };
-
-    const char* const left_side_violation_string = "a rule must start from a nonterminal and"
-                                                   "contain in its left side the nonterminal only.\n";
 
     bool isValidNonterminal(size_t l, size_t r, std::string& s) {
         for (size_t i = l; i < r; ++i) {
@@ -63,33 +60,91 @@ namespace {
 
 namespace details {
 
-    bool operator==(const RuleRightSide& a, const RuleRightSide& b) {
-        return a.sequence == b.sequence && a.nonterminal_indexes == b.nonterminal_indexes;
+    size_t TwoDirectionsTable::insert(std::string&& s, TableValue::TokenType token_type) {
+        auto it1 = rtable.find(s);
+
+        if (it1 != rtable.end()) {
+            table[it1->second].type |= token_type;
+            return it1->second;
+        }
+        
+        auto it2 = table.emplace(table.size(), TableValue{std::move(s), token_type}).first;
+
+        rtable.emplace(it2->second.token, rtable.size());
+
+        return it2->first;
     }
 
-    std::ostream& operator<<(std::ostream& out, const RuleRightSide& rrs) {
-        size_t prefix_size = rrs.nonterminal_indexes.empty() ? rrs.sequence.size() : rrs.nonterminal_indexes.front();
+    void TwoDirectionsTable::erase(size_t x) {
+        auto it = table.find(x);
+        rtable.erase(it->second.token);
+        table.erase(it);
+    }
 
-        for (size_t i = 0; i < prefix_size; ++i) {
-            out << "\"" << rrs.sequence[i] << "\" ";
+    void TwoDirectionsTable::clear() noexcept {
+        table.clear();
+        rtable.clear();
+    }
+
+    bool isRuleRightSidesEqual(const RuleRightSide& a,
+                               const RuleRightSide& b,
+                               const TwoDirectionsTable& a_table,
+                               const TwoDirectionsTable& b_table) {
+        if (a.nt_indexes != b.nt_indexes) return false;
+
+        for (size_t nt_ind : a.nt_indexes) {
+            if (a_table.table.at(a.sequence[nt_ind]).token != b_table.table.at(b.sequence[nt_ind]).token) return false;
         }
 
-        if (rrs.nonterminal_indexes.empty()) return out;
+        if (a.nt_indexes.empty()) {
+            for (size_t i = 0; i < a.sequence.size(); ++i) {
+                if (a_table.table.at(a.sequence[i]).token != a_table.table.at(b.sequence[i]).token) return false;
+            }
 
-        for (size_t i = 1; i < rrs.nonterminal_indexes.size(); ++i) {
-            out << rrs.sequence[rrs.nonterminal_indexes[i - 1]] << " ";
-            for (size_t j = rrs.nonterminal_indexes[i - 1] + 1; j < rrs.nonterminal_indexes[i]; ++j) {
-                out << "\"" << rrs.sequence[j] << "\" ";
+            return true;
+        }
+
+        for (size_t i = 0; i < a.nt_indexes[0]; ++i) {
+            if (a_table.table.at(a.sequence[i]).token != a_table.table.at(b.sequence[i]).token) return false;
+        }
+
+        for (size_t i = 1; i < a.nt_indexes.size(); ++i) {
+            for (size_t j = a.nt_indexes[i - 1] + 1; j < a.nt_indexes[i]; ++j) {
+                if (a_table.table.at(a.sequence[j]).token != b_table.table.at(b.sequence[j]).token) return false;
             }
         }
 
-        out << rrs.sequence[rrs.nonterminal_indexes.back()] << " ";
-
-        for (size_t i = rrs.nonterminal_indexes.back() + 1; i < rrs.sequence.size(); ++i) {
-            out << "\"" << rrs.sequence[i] << "\" ";
+        for (size_t i = a.nt_indexes.back() + 1; i < a.sequence.size(); ++i) {
+            if (a_table.table.at(a.sequence[i]).token != b_table.table.at(b.sequence[i]).token) return false;
         }
 
-        return out;
+        return true;
+    }
+
+    // TODO: escape sequences are not handled
+    void outputRuleRightSide(std::ostream& out,
+                             const RuleRightSide& rrs,
+                             const std::map<size_t, TableValue>& table) {
+        size_t prefix_size = rrs.nt_indexes.empty() ? rrs.sequence.size() : rrs.nt_indexes.front();
+
+        for (size_t i = 0; i < prefix_size; ++i) {
+            out << "\"" << table.at(rrs.sequence[i]).token << "\" ";
+        }
+
+        if (rrs.nt_indexes.empty()) return;
+
+        for (size_t i = 1; i < rrs.nt_indexes.size(); ++i) {
+            out << table.at(rrs.sequence[rrs.nt_indexes[i - 1]]).token << " ";
+            for (size_t j = rrs.nt_indexes[i - 1] + 1; j < rrs.nt_indexes[i]; ++j) {
+                out << "\"" << table.at(rrs.sequence[j]).token << "\" ";
+            }
+        }
+
+        out << table.at(rrs.sequence[rrs.nt_indexes.back()]).token << " ";
+
+        for (size_t i = rrs.nt_indexes.back() + 1; i < rrs.sequence.size(); ++i) {
+            out << "\"" << table.at(rrs.sequence[i]).token << "\" ";
+        }
     }
 
     rule_violation::rule_violation(const char* message)
@@ -100,20 +155,63 @@ namespace details {
     }
 
     void Grammar::clear() noexcept {
+        tdtable.clear();
         multirules.clear();
-        start.clear();
+    }
+
+    bool operator==(const Grammar& a, const Grammar& b) {
+        if (a.multirules.size() != b.multirules.size()) return false;
+
+        auto& a_table = a.tdtable;
+        auto& b_table = b.tdtable;
+
+        for (auto& multirule : a.multirules) {
+            auto& a_rrs_vec = multirule.second;
+            auto& b_rrs_vec = b.multirules.at(b_table.rtable.at(a_table.table.at(multirule.first).token));
+
+            if (a_rrs_vec.size() != b_rrs_vec.size()) return false;
+
+            for (size_t i = 0; i < a_rrs_vec.size(); ++i) {
+                if (!isRuleRightSidesEqual(a_rrs_vec[i], b_rrs_vec[i], a_table, b_table)) return false;
+            }
+        }
+
+        return true;
+    }
+
+    void flushTerminalBuffer(std::string& tbuf, size_t cur_nt, Grammar& g) {
+        const size_t terminal_index = g.tdtable.insert(std::move(tbuf), TableValue::k_Terminal);
+
+        g.multirules[cur_nt].back().sequence.push_back(terminal_index);
+        tbuf.clear();
+    }
+
+    size_t findTerminalEnd(size_t pos, std::string& s) {
+        bool is_escaped = false;
+        
+        while (pos < s.size() && (s[pos] != '"' || is_escaped)) {
+            if (s[pos] == '\\') {
+                is_escaped = !is_escaped;
+            } else {
+                is_escaped = false;
+            }
+
+            ++pos;
+        }
+
+        return pos;
     }
 
     std::istream& operator>>(std::istream& in, Grammar& g) {
         g.clear();
 
         std::string s;
-        std::string cur_nonterminal;
+        std::string terminal_buf;
+        size_t cur_nonterminal;
         LastToken last_token = LastToken::k_Nothing;
-        bool isRuleRightSide = false;
-        bool isEscaped;
+        bool is_rule_right_side = false;
         size_t l, r;
-        size_t line_index = 0;  // todo: provide line_index for a user
+        size_t line_index = 0;  // TODO: provide line_index for a user in exceptions
 
         while (std::getline(in, s)) {
             if (s.back() == '\n') {
@@ -126,27 +224,32 @@ namespace details {
                 if (s[r] == '#') break;
 
                 if (s[r] == ':') {
-                    if (last_token != LastToken::k_Nonterminal) {
-                        throw rule_violation(left_side_violation_string);
-                    }
-
-                    if (isRuleRightSide) {
+                    if (is_rule_right_side) {
                         throw rule_violation("the ':' symbol must appear only "
                                              "once during a rule definition.\n");
                     }
 
-                    isRuleRightSide = true;
+                    if (last_token == LastToken::k_Nothing) {
+                        throw rule_violation("expected a nonterminal, but met ':'.\n");
+                    }
+
+                    is_rule_right_side = true;
                     g.multirules[cur_nonterminal].push_back(RuleRightSide());
+                    last_token = LastToken::k_Nothing;
                     continue;
                 }
 
                 if (s[r] == '|') {
-                    if (!isRuleRightSide) {
+                    if (!is_rule_right_side) {
                         throw rule_violation("the '|' symbol cannot be used before ':'.\n");
                     }
 
-                    if (g.multirules[cur_nonterminal].back().sequence.empty()) {
+                    if (last_token == LastToken::k_Nothing) {
                         throw rule_violation("the right side of a rule cannot be empty.\n");
+                    }
+
+                    if (last_token == LastToken::k_Terminal) {
+                        flushTerminalBuffer(terminal_buf, cur_nonterminal, g);
                     }
 
                     g.multirules[cur_nonterminal].push_back(RuleRightSide());
@@ -155,56 +258,46 @@ namespace details {
                 }
 
                 if (s[r] == ';') {
-                    if (!isRuleRightSide) {
-                        throw rule_violation("expected the ':' symbol, but met ';'.\n");
+                    if (!is_rule_right_side) {
+                        throw rule_violation("expected ':' symbol, but met ';'.\n");
                     }
 
-                    if (g.multirules[cur_nonterminal].back().sequence.empty()) {
+                    if (last_token == LastToken::k_Nothing) {
                         throw rule_violation("a rule cannot be empty this way. "
                                              "Add \"\" to the right side.\n");
                     }
 
+                    if (last_token == LastToken::k_Terminal) {
+                        flushTerminalBuffer(terminal_buf, cur_nonterminal, g);
+                    }
+
+                    is_rule_right_side = false;
                     last_token = LastToken::k_Nothing;
-                    isRuleRightSide = false;
-                    cur_nonterminal.clear();
                     continue;
                 }
 
                 if (s[r] == '"') {
-                    isEscaped = false;
                     l = r;
-                    ++r;
-
-                    while (r < s.size() && (s[r] != '"' || isEscaped)) {
-                        if (s[r] == '\\') {
-                            isEscaped = !isEscaped;
-                        } else {
-                            isEscaped = false;
-                        }
-
-                        ++r;
-                    }
+                    r = findTerminalEnd(r + 1, s);
 
                     if (r == s.size()) {
                         throw rule_violation("every sequence in \"\"-quotes must "
                                              "be closed on the same line.\n");
                     }
 
-                    if (!isRuleRightSide) {
-                        throw rule_violation(left_side_violation_string);
+                    if (!is_rule_right_side) {
+                        throw rule_violation("expected ':' symbol, but met a terminal.\n");
                     }
 
                     auto& cur_rule = g.multirules[cur_nonterminal].back();
 
-                    if (last_token == LastToken::k_Terminal) {
-                        cur_rule.sequence.back().append(substr_without_escape_sequences(s, l + 1, r));
-                    } else {
-                        cur_rule.sequence.push_back(substr_without_escape_sequences(s, l + 1, r));
-                    }
-
+                    terminal_buf += substr_without_escape_sequences(s, l + 1, r);
                     last_token = LastToken::k_Terminal;
-
                     continue;
+                }
+
+                if (last_token == LastToken::k_Terminal) {
+                    flushTerminalBuffer(terminal_buf, cur_nonterminal, g);
                 }
 
                 l = r;
@@ -215,25 +308,29 @@ namespace details {
                 }
                 
                 if (!isValidNonterminal(l, r, s)) {
-                    throw rule_violation("invalid nonterminal. Probably, you put "
+                    throw rule_violation("an invalid nonterminal. Probably, you put "
                                          "illegal letters inside of it.\n");
                 }
 
-                if (cur_nonterminal.empty()) {
-                    cur_nonterminal = s.substr(l, r - l);
-                    g.multirules.insert({cur_nonterminal, {}});
+                if (!is_rule_right_side && last_token == LastToken::k_Nothing) {
+                    cur_nonterminal = g.tdtable.insert(s.substr(l, r - l),
+                                                       TableValue::k_Nonterminal);
 
-                    if (g.start.empty()) {
+                    if (g.multirules.size() == 0) {
                         g.start = cur_nonterminal;
                     }
+
+                    g.multirules.insert({cur_nonterminal, {}});
                 } else {
-                    if (!isRuleRightSide) {
+                    if (!is_rule_right_side) {
                         throw rule_violation("expected ':' symbol, but found a nonterminal.\n");
                     }
 
                     auto& cur_rule = g.multirules[cur_nonterminal].back();
-                    cur_rule.sequence.push_back(s.substr(l, r - l));
-                    cur_rule.nonterminal_indexes.push_back(cur_rule.sequence.size() - 1);
+
+                    cur_rule.sequence.push_back(g.tdtable.insert(s.substr(l, r - l),
+                                                                 TableValue::k_Nonterminal));
+                    cur_rule.nt_indexes.push_back(cur_rule.sequence.size() - 1);
                 }
 
                 last_token = LastToken::k_Nonterminal;
@@ -242,7 +339,7 @@ namespace details {
             ++line_index;
         }
 
-        if (isRuleRightSide || last_token != LastToken::k_Nothing) {
+        if (is_rule_right_side || last_token != LastToken::k_Nothing) {
             throw rule_violation("the last rule is not finished.\n");
         }
 
@@ -250,36 +347,46 @@ namespace details {
     }
 
     std::ostream& operator<<(std::ostream& out, const Grammar& g) {
-        if (g.start.empty()) return out;
+        if (g.multirules.empty()) return out;
 
-        std::stack<std::string_view> bfs_stack;
-        std::set<std::string_view> shown;
-        std::string s;
+        std::queue<size_t> bfs_queue;
+        std::set<size_t> shown;
+        size_t cur;
+        auto& table = g.tdtable.table;
 
-        bfs_stack.push(g.start);
+        for (auto& multirule : g.multirules) {
+            if (shown.find(multirule.first) != shown.end()) continue;
 
-        while (!bfs_stack.empty()) {
-            s = bfs_stack.top();
-            bfs_stack.pop();
-
-            out << s << "\n";
-
-            auto& rrs_set = g.multirules.find(s)->second;
-
-            out << ": " << rrs_set.front() << "\n";
-
-            for (size_t i = 1; i < rrs_set.size(); ++i) {
-                out << "| " << rrs_set[i] << "\n";
-            }
-
-            out << ";\n";
-
-            for (auto& rrs : rrs_set) {
-                for (auto& index : rrs.nonterminal_indexes) {
-                    if (shown.find(rrs.sequence[index]) != shown.end()) continue;
-
-                    shown.insert(rrs.sequence[index]);
-                    bfs_stack.push(rrs.sequence[index]);
+            bfs_queue.push(multirule.first);
+            
+            while (!bfs_queue.empty()) {
+                cur = bfs_queue.front();
+                bfs_queue.pop();
+                shown.insert(cur);
+    
+                out << table.at(cur).token << "\n";
+    
+                auto& rrs_vec = g.multirules.find(cur)->second;
+    
+                out << ": ";
+                outputRuleRightSide(out, rrs_vec.front(), table);
+                out << "\n";
+    
+                for (size_t i = 1; i < rrs_vec.size(); ++i) {
+                    out << "| ";
+                    outputRuleRightSide(out, rrs_vec[i], table);
+                    out << "\n";
+                }
+    
+                out << ";\n";
+    
+                for (auto& rrs : rrs_vec) {
+                    for (auto& index : rrs.nt_indexes) {
+                        if (shown.find(rrs.sequence[index]) != shown.end()) continue;
+    
+                        shown.insert(rrs.sequence[index]);
+                        bfs_queue.push(rrs.sequence[index]);
+                    }
                 }
             }
         }
