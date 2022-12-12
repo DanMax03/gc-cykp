@@ -15,9 +15,9 @@ constexpr const char* const help_string =
 "   gc-cykp -R <text_file> [-s <converted_grammar_file>] [-n] <grammar_file>\n"
 "OPTIONS:\n"
 "   -R - recognition mode\n"
-"       -n - no grammar convertation, a grammar must be already in the Chomsky form\n"
+"       -n - do not convert a grammar, the grammar must be already in the Chomsky form\n"
 "   -C - convertation only mode\n"
-"   -s - save a converted grammar in a file\n";
+"   -s - save a converted grammar in a <converted_grammar_file>\n";
 
 
 void parseArguments(ci::ParsedArguments& pargs, std::vector<std::string> &args) {
@@ -74,14 +74,12 @@ void parseArguments(ci::ParsedArguments& pargs, std::vector<std::string> &args) 
                 }
     
                 default: {
-                    std::cout << "Entered default\n";
                     pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
                     return;
                 }
             }
         }
         catch (...) {
-            std::cout << "Entered catch\n";
             pargs.mode = ci::ParsedArguments::ProgramMode::k_Unknown;
             return;
         }

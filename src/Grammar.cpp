@@ -56,66 +56,76 @@ namespace {
         return res;
     }
 
-}
+}  // namespace
 
 namespace details {
 
-    size_t TwoDirectionsTable::insert(std::string&& s, TableValue::TokenType token_type) {
+    size_t TokenTable::insert(std::string&& s, TableValue::TokenType type) {
         auto it1 = rtable.find(s);
 
         if (it1 != rtable.end()) {
-            table[it1->second].type |= token_type;
+            table[it1->second].type |= type;
             return it1->second;
         }
         
-        auto it2 = table.emplace(table.size(), TableValue{std::move(s), token_type}).first;
+        auto it2 = table.emplace(table.size(), TableValue{std::move(s), type}).first;
 
         rtable.emplace(it2->second.token, rtable.size());
 
         return it2->first;
     }
 
-    void TwoDirectionsTable::erase(size_t x) {
+    void TokenTable::erase(size_t x, TableValue::TokenType type) {
         auto it = table.find(x);
+
+        it->second.type ^= type;
+
+        if (it->second.type != 0) return;
+
         rtable.erase(it->second.token);
         table.erase(it);
     }
 
-    void TwoDirectionsTable::clear() noexcept {
+    void TokenTable::clear() noexcept {
         table.clear();
         rtable.clear();
     }
 
     bool isRuleRightSidesEqual(const RuleRightSide& a,
                                const RuleRightSide& b,
-                               const TwoDirectionsTable& a_table,
-                               const TwoDirectionsTable& b_table) {
+                               const TokenTable::Table& a_table,
+                               const TokenTable::Table& b_table) {
         if (a.nt_indexes != b.nt_indexes) return false;
 
         for (size_t nt_ind : a.nt_indexes) {
-            if (a_table.table.at(a.sequence[nt_ind]).token != b_table.table.at(b.sequence[nt_ind]).token) return false;
+            if (a_table.at(a.sequence[nt_ind]).token !=
+                b_table.at(b.sequence[nt_ind]).token) return false;
         }
 
         if (a.nt_indexes.empty()) {
             for (size_t i = 0; i < a.sequence.size(); ++i) {
-                if (a_table.table.at(a.sequence[i]).token != a_table.table.at(b.sequence[i]).token) return false;
+                if (a_table.at(a.sequence[i]).token !=
+                    a_table.at(b.sequence[i]).token) return false;
             }
 
             return true;
         }
 
         for (size_t i = 0; i < a.nt_indexes[0]; ++i) {
-            if (a_table.table.at(a.sequence[i]).token != a_table.table.at(b.sequence[i]).token) return false;
+            if (a_table.at(a.sequence[i]).token !=
+                a_table.at(b.sequence[i]).token) return false;
         }
 
         for (size_t i = 1; i < a.nt_indexes.size(); ++i) {
             for (size_t j = a.nt_indexes[i - 1] + 1; j < a.nt_indexes[i]; ++j) {
-                if (a_table.table.at(a.sequence[j]).token != b_table.table.at(b.sequence[j]).token) return false;
+                if (a_table.at(a.sequence[j]).token !=
+                    b_table.at(b.sequence[j]).token) return false;
             }
         }
 
         for (size_t i = a.nt_indexes.back() + 1; i < a.sequence.size(); ++i) {
-            if (a_table.table.at(a.sequence[i]).token != b_table.table.at(b.sequence[i]).token) return false;
+            if (a_table.at(a.sequence[i]).token !=
+                b_table.at(b.sequence[i]).token) return false;
         }
 
         return true;
@@ -155,15 +165,15 @@ namespace details {
     }
 
     void Grammar::clear() noexcept {
-        tdtable.clear();
+        tntable.clear();
         multirules.clear();
     }
 
     bool operator==(const Grammar& a, const Grammar& b) {
         if (a.multirules.size() != b.multirules.size()) return false;
 
-        auto& a_table = a.tdtable;
-        auto& b_table = b.tdtable;
+        auto& a_table = a.tntable;
+        auto& b_table = b.tntable;
 
         for (auto& multirule : a.multirules) {
             auto& a_rrs_vec = multirule.second;
@@ -172,7 +182,10 @@ namespace details {
             if (a_rrs_vec.size() != b_rrs_vec.size()) return false;
 
             for (size_t i = 0; i < a_rrs_vec.size(); ++i) {
-                if (!isRuleRightSidesEqual(a_rrs_vec[i], b_rrs_vec[i], a_table, b_table)) return false;
+                if (!isRuleRightSidesEqual(a_rrs_vec[i],
+                                           b_rrs_vec[i],
+                                           a_table.table,
+                                           b_table.table)) return false;
             }
         }
 
@@ -180,7 +193,7 @@ namespace details {
     }
 
     void flushTerminalBuffer(std::string& tbuf, size_t cur_nt, Grammar& g) {
-        const size_t terminal_index = g.tdtable.insert(std::move(tbuf), TableValue::k_Terminal);
+        const size_t terminal_index = g.tntable.insert(std::move(tbuf), TableValue::k_Terminal);
 
         g.multirules[cur_nt].back().sequence.push_back(terminal_index);
         tbuf.clear();
@@ -313,7 +326,7 @@ namespace details {
                 }
 
                 if (!is_rule_right_side && last_token == LastToken::k_Nothing) {
-                    cur_nonterminal = g.tdtable.insert(s.substr(l, r - l),
+                    cur_nonterminal = g.tntable.insert(s.substr(l, r - l),
                                                        TableValue::k_Nonterminal);
 
                     if (g.multirules.size() == 0) {
@@ -328,7 +341,7 @@ namespace details {
 
                     auto& cur_rule = g.multirules[cur_nonterminal].back();
 
-                    cur_rule.sequence.push_back(g.tdtable.insert(s.substr(l, r - l),
+                    cur_rule.sequence.push_back(g.tntable.insert(s.substr(l, r - l),
                                                                  TableValue::k_Nonterminal));
                     cur_rule.nt_indexes.push_back(cur_rule.sequence.size() - 1);
                 }
@@ -352,7 +365,7 @@ namespace details {
         std::queue<size_t> bfs_queue;
         std::set<size_t> shown;
         size_t cur;
-        auto& table = g.tdtable.table;
+        auto& table = g.tntable.table;
 
         for (auto& multirule : g.multirules) {
             if (shown.find(multirule.first) != shown.end()) continue;

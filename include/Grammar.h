@@ -24,7 +24,7 @@ namespace details {
     };
 
     // rtable stays for a reversed table
-    struct TwoDirectionsTable {
+    struct TokenTable {
         using Table = std::map<size_t, TableValue>;
         using ReversedTable = std::map<std::string, size_t>;
 
@@ -32,7 +32,7 @@ namespace details {
         ReversedTable rtable;
 
         size_t insert(std::string&& s, TableValue::TokenType type);
-        void erase(size_t x);
+        void erase(size_t x, TableValue::TokenType type);
         void clear() noexcept;
     };
 
@@ -43,15 +43,18 @@ namespace details {
 
     bool isRuleRightSidesEqual(const RuleRightSide& a,
                                const RuleRightSide& b,
-                               const std::map<size_t, TableValue>& table);
+                               const TokenTable::Table& a_table,
+                               const TokenTable::Table& b_table);
     
     void outputRuleRightSide(std::ostream& out,
                              const RuleRightSide& rrs,
-                             const TwoDirectionsTable& tdtable);
+                             const TokenTable& tntable);
+
+    using MultirulesMap = std::map<size_t, std::vector<RuleRightSide>>;
 
     struct Grammar {
-        TwoDirectionsTable tdtable;
-        std::map<size_t, std::vector<RuleRightSide>> multirules;
+        TokenTable tntable;
+        MultirulesMap multirules;
         size_t start;
 
         void clear() noexcept;

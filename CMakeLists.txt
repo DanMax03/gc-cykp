@@ -15,7 +15,9 @@ target_sources(${PROJECT_NAME}
     PUBLIC
         src/Talker.cpp
         src/Grammar.cpp
+        src/isInChomskyForm.cpp
         src/ChomskyFormConvertation.cpp
+        src/CYK_Algorithm.cpp
         src/execConvertation.cpp
         src/execRecognition.cpp)
 
