@@ -341,9 +341,9 @@ namespace details {
 
                     auto& cur_rule = g.multirules[cur_nonterminal].back();
 
+                    cur_rule.nt_indexes.push_back(cur_rule.sequence.size());
                     cur_rule.sequence.push_back(g.tntable.insert(s.substr(l, r - l),
                                                                  TableValue::k_Nonterminal));
-                    cur_rule.nt_indexes.push_back(cur_rule.sequence.size() - 1);
                 }
 
                 last_token = LastToken::k_Nonterminal;

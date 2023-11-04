@@ -10,16 +10,23 @@ namespace details {
 
     namespace extra {
         void deleteUngenerativeAndUnreachableNonterminals(Grammar& g) {
+            struct DFSState {
+                size_t left_nt_key;
+                size_t rrs_index = 0;
+                size_t right_nt_index;
+            };
+
             static const int k_Nothing = 0;
             static const int k_Waited = 0b1;
             static const int k_Seen = 0b10;
             static const int k_Generative = 0b100;
             
-            std::vector<unsigned short> nt_states(g.tntable.table.size());
+            std::vector<unsigned short> nt_states(g.tntable.table.size()); // TODO: remove k_Waited, only k_Seen and k_Generative
             std::stack<size_t> dfs_stack;
             size_t cur;
             int indicator;
     
+            nt_states[g.start] = k_Waited;
             dfs_stack.push(g.start);
     
             while (!dfs_stack.empty()) {
@@ -90,7 +97,8 @@ namespace details {
         void unmixAndShortenRule(size_t rls, size_t rrs_ind, Grammar& g) {
             auto& rrs = g.multirules[rls][rrs_ind];
 
-            if (rrs.sequence.size() == 1 || rrs.nt_indexes.empty()) return;
+            if (rrs.sequence.size() == 1 || rrs.nt_indexes.empty() ||
+                (rrs.sequence.size() == 2 && rrs.nt_indexes.size() == 2)) return;
 
             size_t unique_nt_code;
             auto& rtable = g.tntable.rtable;
@@ -98,7 +106,7 @@ namespace details {
 
             for (size_t j = 0; j < rrs.nt_indexes[0]; ++j) {
                 unique_nt_code = insertUniqueNonterminal(g);
-                g.multirules.insert({unique_nt_code, {RuleRightSide{{rrs.sequence[j]}, {}}}});
+                g.multirules[unique_nt_code] = {RuleRightSide{{rrs.sequence[j]}, {}}};
                 new_nt_codes[j] = unique_nt_code;
             }
 
@@ -107,7 +115,7 @@ namespace details {
             for (size_t i = 1; i < rrs.nt_indexes.size(); ++i) {
                 for (size_t j = rrs.nt_indexes[i - 1] + 1; j < rrs.nt_indexes[i]; ++j) {
                     unique_nt_code = insertUniqueNonterminal(g);
-                    g.multirules.insert({unique_nt_code, {RuleRightSide{{rrs.sequence[j]}, {}}}});
+                    g.multirules[unique_nt_code] = {RuleRightSide{{rrs.sequence[j]}, {}}};
                     new_nt_codes[j] = unique_nt_code;
                 }
                 new_nt_codes[rrs.nt_indexes[i]] = rrs.sequence[rrs.nt_indexes[i]];
@@ -115,7 +123,7 @@ namespace details {
 
             for (size_t j = rrs.nt_indexes.back() + 1; j < rrs.sequence.size(); ++j) {
                 unique_nt_code = insertUniqueNonterminal(g);
-                g.multirules.insert({unique_nt_code, {RuleRightSide{{rrs.sequence[j]}, {}}}});
+                g.multirules[unique_nt_code] = {RuleRightSide{{rrs.sequence[j]}, {}}};
                 new_nt_codes[j] = unique_nt_code;
             }
 
@@ -261,15 +269,85 @@ namespace details {
     
         void deleteNonterminalChains(Grammar& g) {
             struct DFSState {
-                size_t nt_code;
+                size_t left_nt_key;
+                size_t rrs_index = 0;
+                size_t right_nt_index = 0;
             };
 
-            std::stack<DFSState> dfs_stack;
+            MultirulesMap compressed_multirules;
 
-            // dfs_stack.push({g.start, })
+            std::vector<bool> is_seen(g.tntable.table.size());
+            std::vector<DFSState> dfs_vector;
+            DFSState cur;
+            size_t dividing_nt_key;
+            size_t another_nt_key;
+            bool is_current_first;
+            bool is_divided = false;
 
-            while (!dfs_stack.empty()) {
-                
+            dfs_vector.push_back({g.start, 0, 0});
+
+            while (!dfs_vector.empty()) {
+                cur = dfs_vector.top();
+
+                auto& multirule = g.multirules[cur.left_nt_key];
+
+                if (cur.rrs_index == multirule.size()) {
+                    dfs_vector.pop_back();
+
+                    if (!is_divided) continue;
+
+                    for (auto& state : dfs_vector) {
+                        compressed_multirules[state.left_nt_key].push_back(RuleRightSide{(is_current_first
+                                                                                          ? {cur.left_nt_key, another_nt_key}
+                                                                                          : {another_nt_key, cur.left_nt_key}),
+                                                                                         {0, 1}});
+                    }
+
+                    if (dividing_nt_key == cur.left_nt_key) {
+                        is_divided = false;
+                    }
+
+                    continue;
+                }
+
+                for (; cur.rrs_index < multirule.size(); ++cur.rrs_index) {
+                    auto& rrs = multirule[cur.rrs_index];
+
+                    if ((rrs.nt_indexes.size() == 2 && is_divided) || rrs.nt_indexes.empty()) continue;
+
+                    for (; cur.right_nt_index < rrs.nt_indexes.size(); ++cur.right_nt_index) {
+                        if (is_seen[rrs.sequence[rrs.nt_indexes[cur.right_nt_index]]]) continue;
+                        break;
+                    }
+
+                    if (cur.right_nt_index == rrs.nt_indexes.size()) {
+                        cur.right_nt_index = 0;
+                        continue;
+                    }
+
+                    if (rrs.nt_indexes.size() == 2) {
+                        is_divided = true;
+                        is_current_first = cur.right_nt_index == 0;
+                        dividing_nt_key = cur.left_nt_key;
+                        another_nt_key = (is_current_first ? rrs.sequence[1] : rrs.sequence[0]);
+                    }
+
+                    dfs_vector.push_back({rrs.sequence[cur.right_nt_index], 0, 0});
+                    ++cur.right_nt_index;
+                    break;
+                }
+            }
+
+            for (auto& [nt_key, rrs_vec] : g.multirules) {
+                rrs_vec.erase(std::remove_if(rrs_vec.begin(),
+                                             rrs_vec.end(),
+                                             [](const RuleRightSide& rrs) { return rrs.nt_indexes.size() == 1; }),
+                              rrs_vec.end());
+            }
+
+            for (auto& [nt_key, rrs_vec] : compressed_multirules) {
+                g.multirules[nt_key].append???
+                g.multirules
             }
         }
 
@@ -283,7 +361,8 @@ namespace details {
         deleteUngenerativeAndUnreachableNonterminals(g);
         deleteMixedAndLongRules(g);
         congregateEmptyGeneratingNonterminals(g);
-        // deleteNonterminalChains(g);
+        deleteNonterminalChains(g);
+        deleteUngenerativeAndUnreachableNonterminals(g);
     }
 
 }  // namespace details
