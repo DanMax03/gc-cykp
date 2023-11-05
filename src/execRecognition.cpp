@@ -1,30 +1,23 @@
-#include "execRecognition.h"
+#include "Application.h"
 
 #include <iostream>
 #include <fstream>
 
-#include "ParsedArguments.h"
-#include "Talker.h"
 #include "Grammar.h"
 #include "GrammarAlgorithms.h"
 
 
 namespace {
-
     void readText(std::ifstream& fin, std::string& text) {
         fin.seekg(0, std::ios::end);
         text.resize(fin.tellg());
         fin.seekg(0, std::ios::beg);
         fin.read(&text[0], text.size());
     }
-
 }  // namespace
 
-namespace details {
-
-    [[nodiscard]] int execRecognition(const ci::ParsedArguments& pargs) {
-        ci::Talker talker;
-
+namespace logic {
+    void Application::execRecognition(const ci::ParsedArguments& pargs) {
         Grammar g;
         std::string text;
 
@@ -78,13 +71,8 @@ namespace details {
                          "recognized by the grammar." << std::endl;
         }
         catch(std::exception& e) {
-            talker.sendTerminationMessage(e.what());
-            return 1;
+            m_exceptor.sendException(e.what());
         }
-
-
-        return 0;
     }
-
-}  // namespace details
+}  // namespace logic
 

@@ -18,7 +18,7 @@ target_sources(${PROJECT_NAME}
         src/isInChomskyForm.cpp
         src/ChomskyFormConvertation.cpp
         src/CYK_Algorithm.cpp
-        src/execConvertation.cpp
+        src/execConversion.cpp
         src/execRecognition.cpp)
 
 target_include_directories(${PROJECT_NAME}

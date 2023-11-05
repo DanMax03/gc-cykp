@@ -29,11 +29,16 @@ namespace ui {
             if (arg[0] != '-') {
                 if (i + 1 < argc) {
                     exceptor.sendException("The " + std::to_string(i) + " argument breaks the arguments pattern.\n");
-                } else if (is_argument_flag(i)) {  // todo: move flag validation
-                    exceptor.sendException("Expected the last argument to be a grammar path");
+                } else if (is_argument_flag(i)) {
+                    exceptor.sendException("Expected the last argument to be a grammar path.\n");
                 }
 
-                pargs.grammar_filename = arg;
+                try {
+                    pargs.grammar_filename = arg;
+                }
+                catch (...) {
+                    exceptor.sendException("Failed to assign a grammar path to std::filesystem::path.\n");
+                }
             }
 
             if (!is_flag_short(arg)) {
@@ -50,9 +55,13 @@ namespace ui {
                     pargs.mode = ProgramMode::kRecognition;
                     ++i;
 
-                    // todo: move flag validation
                     if (argument_exists(i) && !is_argument_flag(i)) {
-                        pargs.text_filename = argv[i];
+                        try {
+                            pargs.text_filename = argv[i];
+                        }
+                        catch (...) {
+                            exceptor.sendException("Failed to assign a text path to std::filesystem::path.\n");
+                        }
                     } else {
                         exceptor.sendException("Expected a path after the '-R' flag.\n");
                     }
@@ -66,14 +75,13 @@ namespace ui {
                 }
 
                 case 'C': {
-                    pargs.mode = ProgramMode::kConvertation;
+                    pargs.mode = ProgramMode::kConversion;
                     ++i;
 
                     if (argument_exists(i) && !is_argument_flag(i)) {
                         // todo: check the length of the argument
                         pargs.convertation_end_phase = std::stoi(argv[i]);
 
-                        // todo: move to argument validation
                         if (*pargs.convertation_end_phase < 0) {
                             exceptor.sendException("Expected a positive number after the '-C' flag. Got negative.\n");
                         }
@@ -88,7 +96,12 @@ namespace ui {
                     ++i;
 
                     if (argument_exists(i) && !is_argument_flag(i)) {
-                        pargs.converted_grammar_filename = argv[i];
+                        try {
+                            pargs.converted_grammar_filename = argv[i];
+                        }
+                        catch (...) {
+                            exceptor.sendException("Failed to assign a saved grammar path to std::filesystem::path.\n");
+                        }
                     } else {
                         exceptor.sendException("Expected a path after the '-s' flag.\n");
                     }

@@ -1,21 +1,24 @@
 #pragma once
 
 #include <optional>
+#include <filesystem>
 
 namespace ui {
     struct ParsedArguments {
+        using Path = std::filesystem::path;
+
         enum class ProgramMode {
             kUnknown,
             kRecognition,
-            kConvertation
+            kConversion
         };
     
         bool need_help = false;
         bool is_already_converted = false;
         ProgramMode mode = ProgramMode::kUnknown;
-        std::optional<int> convertation_end_phase = std::nullopt;
-        std::optional<std::string> text_filename = std::nullopt;
-        std::string grammar_filename;
-        std::optional<std::string> converted_grammar_filename = std::nullopt;
+        std::optional<int> convertation_end_phase;
+        std::optional<Path> text_filename;
+        Path grammar_filename;
+        std::optional<Path> converted_grammar_filename;
     };
 }  // namespace ui
