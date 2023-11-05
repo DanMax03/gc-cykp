@@ -12,7 +12,10 @@ add_executable(${PROJECT_NAME})
 target_sources(${PROJECT_NAME}
     PRIVATE
         main.cpp
+        src/Application.cpp
+        src/ArgumentParsing.cpp
     PUBLIC
+        src/ExceptionController.cpp
         src/Talker.cpp
         src/Grammar.cpp
         src/isInChomskyForm.cpp

@@ -1,10 +1,9 @@
-#ifndef _INCLUDE_GRAMMARALGORITHMS_H
-#define _INCLUDE_GRAMMARALGORITHMS_H
+#pragma once
 
 #include "Grammar.h"
 #include "CYK_Algorithm.h"
 
-namespace details {
+namespace fl {
 
     bool isChomskyRuleRightSide(const RuleRightSide& rrs);
 
@@ -12,6 +11,4 @@ namespace details {
 
     bool isInChomskyForm(const Grammar& g);
 
-}  // namespace details
-
-#endif  // _INCLUDE_GRAMMARALGORITHMS_H
+}  // namespace fl
