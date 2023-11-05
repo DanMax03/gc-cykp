@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ExceptionController.h"
+#include "Talker.h"
 
 namespace logic {
     class Application {
@@ -12,7 +13,7 @@ namespace logic {
         void execConvertation();
 
     private:
-        ui::Talker m_talker;
         ExceptionController m_exceptor;
+        std::shared_ptr<ui::Talker> m_talker;
     };
 }  // namespace logic

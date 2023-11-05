@@ -7,12 +7,12 @@ namespace ui {
         : m_exceptor(exceptor) {
     }
 
-    void Talker::sendMessage(const char* c_str, bool add_final_string) const {
-        if (c_str == nullptr) {
+    void Talker::sendMessage(const char* msg, bool add_final_string) const {
+        if (msg == nullptr) {
             m_exceptor.sendException("Talker::sendMessage cannot take nullptr argument");
         }
 
-        out << c_str;
+        out << msg;
 
         if (add_final_string) {
             sendFinalString();
@@ -27,14 +27,14 @@ namespace ui {
         out << help_string;
     }
 
-    void Talker::sendTerminationMessage(const char* c_str) const {
-        if (c_str == nullptr) {
+    void Talker::sendTerminationMessage(const char* msg) const {
+        if (msg == nullptr) {
             m_exceptor.sendException("Talker::sendTerminationMessage cannot take nullptr argument");
         }
 
         sendTerminationString();
 
-        out << c_str;
+        out << msg;
 
         sendFinalString();
     }

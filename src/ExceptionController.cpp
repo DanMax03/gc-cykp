@@ -19,4 +19,8 @@ namespace logic {
                 throw std::runtime_error(msg);
         }
     }
+
+    void ExceptionController::sendException(std::string_view msg) noexcept(EXCEPTION_POLICY_INDEX == 0) {
+        sendException(msg.data());
+    }
 }  // namespace logic
