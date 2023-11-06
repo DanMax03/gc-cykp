@@ -3,10 +3,7 @@
 #include "Grammar.h"
 #include "CYK_Algorithm.h"
 
-namespace fl {
-    bool isChomskyRuleRightSide(const RuleRightSide& rrs);
-
-    void convertToChomskyForm(Grammar& g);
-
+namespace fl::algo {
+    void convertToChomskyForm(Grammar& g, int end_phase);
     bool isInChomskyForm(const Grammar& g);
-}  // namespace fl
+}  // namespace fl::algo

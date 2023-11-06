@@ -11,7 +11,7 @@
 
 namespace logic {
     void Application::execConversion(const ui::ParsedArguments& pargs) {
-        Grammar g;
+        fl::Grammar g;
 
         try {
             std::ifstream fin(pargs.grammar_filename);
@@ -32,7 +32,7 @@ namespace logic {
             }
 
 
-            convertToChomskyForm(g);
+            fl::algo::convertToChomskyForm(g, *pargs.convertation_end_phase);
 
             if (fout.is_open()) {
                 fout << g;

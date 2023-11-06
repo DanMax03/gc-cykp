@@ -11,12 +11,11 @@ namespace logic {
     }
 
     void ExceptionController::sendException(const char* msg) noexcept(EXCEPTION_POLICY_INDEX == 0) {
-        switch (EXCEPTION_POLICY_INDEX) {
-            case 0:
-                m_talker->sendTerminationMessage(msg);
-                std::terminate();
-            case 1:
-                throw std::runtime_error(msg);
+        if constexpr(EXCEPTION_POLICY_INDEX == 0) {
+            m_talker->sendTerminationMessage(msg);
+            std::terminate();
+        } else {
+            throw std::runtime_error(msg);
         }
     }
 

@@ -1,69 +1,70 @@
 #include "CYK_Algorithm.h"
 
+namespace {
+    using namespace fl;
 
-namespace fl::cyk {
-    namespace cyk_details {
-        void initNonterminalTokenKeyTable(NonterminalTokenKeyTable& nt_table, const Grammar& g) {
-            nt_table.reserve(g.tntable.nt_count);
+    using NonterminalTokenKeyTable = std::unordered_map<TokenKey, size_t>;
+    using SubstringVector = std::vector<std::vector<bool>>;
 
-            size_t nonterminal_count = 0;
+    void initNonterminalTokenKeyTable(NonterminalTokenKeyTable& nt_table, const Grammar& g) {
+        nt_table.reserve(g.tntable.nt_count);
 
-            for (const auto& [key, entry] : g.tntable.table) {
-                if ((entry.type & TokenType::kNonterminal) == TokenType::kNothing) {
+        size_t nonterminal_count = 0;
+
+        for (const auto& [key, entry] : g.tntable.table) {
+            if ((entry.type & TokenType::kNonterminal) == TokenType::kNothing) {
+                continue;
+            }
+
+            nt_table[key] = nonterminal_count++;
+        }
+    }
+
+    void initTerminalMultirulesVector(MultirulesMap& mm, const Grammar& g) {
+        for (const auto& [nt_index, multirrs] : g.multirules) {
+            for (const auto& rrs : multirrs) {
+                if (!rrs.nt_indexes.empty()) {
                     continue;
                 }
 
-                nt_table[key] = nonterminal_count++;
+                mm[nt_index].push_back(rrs);
             }
         }
+    }
 
-        void initTerminalMultirulesVector(MultirulesMap& mm, const Grammar& g) {
-            for (const auto& [nt_index, multirrs] : g.multirules) {
-                for (const auto& rrs : multirrs) {
-                    if (!rrs.nt_indexes.empty()) {
-                        continue;
-                    }
+    void initRecognitionVector(std::vector<SubstringVector>& v,
+                               const std::string& text,
+                               NonterminalTokenKeyTable& nt_table,
+                               const Grammar& g) {
+        MultirulesMap terminal_multirules;
+        std::string_view text_sv;
+        initTerminalMultirulesVector(terminal_multirules, g);
 
-                    mm[nt_index].push_back(rrs);
-                }
-            }
-        }
+        auto isTerminalRecognized = [&](std::string_view sv, const RuleRightSide& rrs) {
+            return std::any_of(rrs.sequence.begin(), rrs.sequence.end(), [&](const TokenKey key) {
+                return sv == g.tntable.table.at(key).token;
+            });
+        };
 
-        void initRecognitionVector(std::vector<SubstringVector>& v,
-                                   const std::string& text,
-                                   NonterminalTokenKeyTable& nt_table,
-                                   const Grammar& g) {
-            MultirulesMap terminal_multirules;
-            std::string_view text_sv;
-            initTerminalMultirulesVector(terminal_multirules, g);
+        for (size_t len = 0; len <= text.size(); ++len) {
+            for (size_t pos = 0; pos + len <= text.size(); ++pos) {
+                for (const auto& [nt_code, multirrs] : terminal_multirules) {
+                    for (const auto& rrs : multirrs) {
+                        v[len][pos][nt_table[nt_code]] = isTerminalRecognized(text_sv.substr(pos, len), rrs);
 
-            auto isTerminalRecognized = [&](std::string_view sv, const RuleRightSide& rrs) {
-                return std::any_of(rrs.sequence.begin(), rrs.sequence.end(), [&](const TokenKey key) {
-                    return sv == g.tntable.table.at(key).token;
-                });
-            };
-
-            for (size_t len = 0; len <= text.size(); ++len) {
-                for (size_t pos = 0; pos + len <= text.size(); ++pos) {
-                    for (const auto& [nt_code, multirrs] : terminal_multirules) {
-                        for (const auto& rrs : multirrs) {
-                            v[len][pos][nt_table[nt_code]] = isTerminalRecognized(text_sv.substr(pos, len), rrs);
-
-                            if (v[len][pos][nt_table[nt_code]]) {
-                                break;
-                            }
+                        if (v[len][pos][nt_table[nt_code]]) {
+                            break;
                         }
                     }
                 }
             }
         }
-        
-    }  // namespace cyk_details
+    }
+}  // namespace
 
+namespace fl::cyk {
     // g must be in CNF
     bool isRecognized(const std::string& text, const fl::Grammar& g) {
-        using namespace cyk_details;
-
         NonterminalTokenKeyTable nt_table;
         initNonterminalTokenKeyTable(nt_table, g);
         // is_recognized[length][position][nt_table[nt_code]] == true,
@@ -108,5 +109,4 @@ namespace fl::cyk {
 
         return is_recognized[text.size()][0][nt_table[g.start]];
     }
-
 }  // namespace fl::cyk
