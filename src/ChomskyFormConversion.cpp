@@ -78,7 +78,7 @@ namespace {
         }
     }
 
-    size_t insertUniqueNonterminal(Grammar& g) {
+    TokenKey insertUniqueNonterminal(Grammar& g) {
         static std::string nt_prefix = "unique_nonterminal_";
         static size_t nt_number = 0;
 
@@ -95,65 +95,66 @@ namespace {
         return g.tntable.insert(std::move(s), TokenType::kNonterminal);
     }
 
-    void unmixAndShortenRule(size_t rls, size_t rrs_ind, Grammar& g) {
-        auto& rrs = g.multirules[rls][rrs_ind];
-
+    void unmixAndShortenRule(TokenKey nt_key, size_t rrs_ind, Grammar& g) {
+        auto& rrs = g.multirules[nt_key][rrs_ind];
+        
         if (rrs.sequence.size() == 1 || rrs.nt_indexes.empty() ||
-            (rrs.sequence.size() == 2 && rrs.nt_indexes.size() == 2)) return;
-
-        size_t unique_nt_code;
-        auto& rtable = g.tntable.rtable;
-        std::vector<size_t> new_nt_codes(rrs.sequence.size());
-
-        for (size_t j = 0; j < rrs.nt_indexes[0]; ++j) {
-            unique_nt_code = insertUniqueNonterminal(g);
-            g.multirules[unique_nt_code] = {RuleRightSide{{rrs.sequence[j]}, {}}};
-            new_nt_codes[j] = unique_nt_code;
-        }
-
-        new_nt_codes[rrs.nt_indexes[0]] = rrs.sequence[rrs.nt_indexes[0]];
-
-        for (size_t i = 1; i < rrs.nt_indexes.size(); ++i) {
-            for (size_t j = rrs.nt_indexes[i - 1] + 1; j < rrs.nt_indexes[i]; ++j) {
-                unique_nt_code = insertUniqueNonterminal(g);
-                g.multirules[unique_nt_code] = {RuleRightSide{{rrs.sequence[j]}, {}}};
-                new_nt_codes[j] = unique_nt_code;
-            }
-            new_nt_codes[rrs.nt_indexes[i]] = rrs.sequence[rrs.nt_indexes[i]];
-        }
-
-        for (size_t j = rrs.nt_indexes.back() + 1; j < rrs.sequence.size(); ++j) {
-            unique_nt_code = insertUniqueNonterminal(g);
-            g.multirules[unique_nt_code] = {RuleRightSide{{rrs.sequence[j]}, {}}};
-            new_nt_codes[j] = unique_nt_code;
-        }
-
-        if (rrs.sequence.size() == 2) {
-            g.multirules[rls][rrs_ind] = RuleRightSide{{new_nt_codes[0], new_nt_codes[1]}, {0, 1}};
+            (rrs.sequence.size() == 2 && rrs.nt_indexes.size() == 2)) {
             return;
         }
 
-        size_t cur_nt = insertUniqueNonterminal(g);
-        size_t i = new_nt_codes.size() - 2;
-        size_t prev_nt = cur_nt;
+        TokenKey unique_nt_key;
+        auto& rtable = g.tntable.rtable;
+        std::vector<TokenKey> new_nt_keys(rrs.sequence.size());
+        auto replaceTerminal = [&](ssize_t j) {
+            unique_nt_key = insertUniqueNonterminal(g);
+            g.multirules[unique_nt_key] = {RuleRightSide{{rrs.sequence[j]}, {}}};
+            new_nt_keys[j] = unique_nt_key;
+        };
 
-        g.multirules[cur_nt].push_back(RuleRightSide{{new_nt_codes[i], new_nt_codes[i + 1]}, {0, 1}});
+        for (ssize_t j = 0; j < rrs.nt_indexes[0]; ++j) {
+            replaceTerminal(j);
+        }
+
+        new_nt_keys[rrs.nt_indexes[0]] = rrs.sequence[rrs.nt_indexes[0]];
+
+        for (ssize_t i = 1; i < rrs.nt_indexes.size(); ++i) {
+            for (ssize_t j = static_cast<ssize_t>(rrs.nt_indexes[i - 1]) + 1; j < rrs.nt_indexes[i]; ++j) {
+                replaceTerminal(j);
+            }
+            new_nt_keys[rrs.nt_indexes[i]] = rrs.sequence[rrs.nt_indexes[i]];
+        }
+
+        for (ssize_t j = static_cast<ssize_t>(rrs.nt_indexes.back()) + 1; j < rrs.sequence.size(); ++j) {
+            replaceTerminal(j);
+        }
+
+        if (rrs.sequence.size() == 2) {
+            g.multirules[nt_key][rrs_ind] = RuleRightSide{{new_nt_keys[0], new_nt_keys[1]}, {0, 1}};
+            return;
+        }
+
+        TokenKey cur_nt = insertUniqueNonterminal(g);
+        TokenKey prev_nt = cur_nt;
+        size_t i = new_nt_keys.size() - 2;
+
+        g.multirules[cur_nt].push_back(RuleRightSide{{new_nt_keys[i], new_nt_keys[i + 1]}, {0, 1}});
 
         while (i > 1) {
             --i;
 
             cur_nt = insertUniqueNonterminal(g);
-            g.multirules[cur_nt].push_back(RuleRightSide{{new_nt_codes[i], prev_nt}, {0, 1}});
+            g.multirules[cur_nt].push_back(RuleRightSide{{new_nt_keys[i], prev_nt}, {0, 1}});
             prev_nt = cur_nt;
         }
 
-        g.multirules[rls][rrs_ind] = RuleRightSide{{new_nt_codes[0], prev_nt}, {0, 1}};
+        g.multirules[nt_key][rrs_ind] = RuleRightSide{{new_nt_keys[0], prev_nt}, {0, 1}};
     }
 
     void deleteMixedAndLongRules(Grammar& g) {
-        for (auto& [rls, multirrs] : g.multirules) {
-            for (size_t rrs_ind = 0; rrs_ind < multirrs.size(); ++rrs_ind) {
-                unmixAndShortenRule(rls, rrs_ind, g);
+        for (auto& [nt_key, multirrs] : g.multirules) {
+            for (ssize_t rrs_ind = 0; rrs_ind < multirrs.size(); ++rrs_ind) {
+                unmixAndShortenRule(nt_key, rrs_ind, g);
             }
         }
     }
