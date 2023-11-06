@@ -60,8 +60,7 @@ namespace logic {
         if (fout.is_open()) {
             fout << g;
         } else {
-            // todo: toString method for Grammar class, change to m_talker.sendMessage()
-            std::cout << "The converted grammar:\n" << g << "\n";
+            m_talker->sendMessage("The converted grammar:\n" + g.toString());
         }
 
         bool recognition_res = fl::cyk::isRecognized(text, g);

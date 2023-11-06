@@ -19,6 +19,10 @@ namespace ui {
         }
     }
 
+    void Talker::sendMessage(std::string& msg, bool add_final_string) const {
+        sendMessage(msg.c_str(), add_final_string);
+    }
+
     void Talker::sendHelpMessage() const {
         if (!help_string) {
             m_exceptor.sendException("Talker::sendHelpMessage is called, but help string is not set");

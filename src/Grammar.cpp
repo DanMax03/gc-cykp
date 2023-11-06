@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <queue>
 #include <set>
+#include <sstream>
 #include <string_view>
 
 namespace {
@@ -137,14 +138,14 @@ namespace fl {
         }
 
         for (ssize_t i = 1; i < a.nt_indexes.size(); ++i) {
-            for (ssize_t j = a.nt_indexes[i - 1] + 1; j < a.nt_indexes[i]; ++j) {
+            for (ssize_t j = static_cast<ssize_t>(a.nt_indexes[i - 1]) + 1; j < a.nt_indexes[i]; ++j) {
                 if (a_table.at(a.sequence[j]).token != b_table.at(b.sequence[j]).token) {
                     return false;
                 }
             }
         }
 
-        for (ssize_t i = a.nt_indexes.back() + 1; i < a.sequence.size(); ++i) {
+        for (ssize_t i = static_cast<ssize_t>(a.nt_indexes.back()) + 1; i < a.sequence.size(); ++i) {
             if (a_table.at(a.sequence[i]).token != b_table.at(b.sequence[i]).token) {
                 return false;
             }
@@ -169,14 +170,14 @@ namespace fl {
         for (ssize_t i = 1; i < rrs.nt_indexes.size(); ++i) {
             out << table.at(rrs.sequence[rrs.nt_indexes[i - 1]]).token << " ";
 
-            for (ssize_t j = rrs.nt_indexes[i - 1] + 1; j < rrs.nt_indexes[i]; ++j) {
+            for (ssize_t j = static_cast<ssize_t>(rrs.nt_indexes[i - 1]) + 1; j < rrs.nt_indexes[i]; ++j) {
                 out << "\"" << table.at(rrs.sequence[j]).token << "\" ";
             }
         }
 
         out << table.at(rrs.sequence[rrs.nt_indexes.back()]).token << " ";
 
-        for (ssize_t i = rrs.nt_indexes.back() + 1; i < rrs.sequence.size(); ++i) {
+        for (ssize_t i = static_cast<ssize_t>(rrs.nt_indexes.back()) + 1; i < rrs.sequence.size(); ++i) {
             out << "\"" << table.at(rrs.sequence[i]).token << "\" ";
         }
     }
@@ -191,6 +192,12 @@ namespace fl {
     void Grammar::clear() noexcept {
         tntable.clear();
         multirules.clear();
+    }
+
+    std::string Grammar::toString() const {
+        std::stringstream ss;
+        ss << *this;
+        return std::move(ss).str();
     }
 
     GrammarBuilder::GrammarBuilder()
@@ -436,13 +443,15 @@ namespace fl {
             return out;
         }
 
-        std::queue<size_t> bfs_queue;
-        std::set<size_t> shown;
-        size_t cur;
-        auto& table = g.tntable.table;
+        std::queue<TokenKey> bfs_queue;
+        std::set<TokenKey> shown;
+        TokenKey cur;
+        const auto& table = g.tntable.table;
 
-        for (auto& multirule : g.multirules) {
-            if (shown.find(multirule.first) != shown.end()) continue;
+        for (const auto& multirule : g.multirules) {
+            if (shown.find(multirule.first) != shown.end()) {
+                continue;
+            }
 
             bfs_queue.push(multirule.first);
             
@@ -453,23 +462,25 @@ namespace fl {
     
                 out << table.at(cur).token << "\n";
     
-                auto& rrs_vec = g.multirules.find(cur)->second;
+                const auto& multirrs = g.multirules.find(cur)->second;
     
                 out << ": ";
-                outputRuleRightSide(out, rrs_vec.front(), table);
+                outputRuleRightSide(out, multirrs.front(), table);
                 out << "\n";
     
-                for (size_t i = 1; i < rrs_vec.size(); ++i) {
+                for (ssize_t i = 1; i < multirrs.size(); ++i) {
                     out << "| ";
-                    outputRuleRightSide(out, rrs_vec[i], table);
+                    outputRuleRightSide(out, multirrs[i], table);
                     out << "\n";
                 }
     
                 out << ";\n";
     
-                for (auto& rrs : rrs_vec) {
-                    for (auto& index : rrs.nt_indexes) {
-                        if (shown.find(rrs.sequence[index]) != shown.end()) continue;
+                for (const auto& rrs : multirrs) {
+                    for (const auto& index : rrs.nt_indexes) {
+                        if (shown.find(rrs.sequence[index]) != shown.end()) {
+                            continue;
+                        }
     
                         shown.insert(rrs.sequence[index]);
                         bfs_queue.push(rrs.sequence[index]);

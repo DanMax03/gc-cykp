@@ -81,6 +81,7 @@ namespace fl {
         TokenKey start;
 
         void clear() noexcept;
+        std::string toString() const;
     };
 
     bool operator==(const Grammar& a, const Grammar& b);

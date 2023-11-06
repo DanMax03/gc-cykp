@@ -8,22 +8,22 @@ namespace fl::cyk {
     using SubstringVector = std::vector<std::vector<bool>>;
     using MetaVector = std::vector<size_t>;
 
-    namespace cyk_details {
+    namespace cyk_fl {
 
-        void initMetaVector(MetaVector& mt, details::Grammar& g);
+        void initMetaVector(MetaVector& mt, fl::Grammar& g);
 
-        void initTerminalMultirulesVector(details::MultirulesMap& mm);
+        void initTerminalMultirulesVector(fl::MultirulesMap& mm);
 
         bool isTerminalRecognized(const std::string_view sv,
-                                  const details::RuleRightSide& rrs,
-                                  const details::TokenTable::Table& table);
+                                  const fl::RuleRightSide& rrs,
+                                  const fl::TokenTable::Table& table);
 
         void initRecognitionVector(std::vector<SubstringVector>& v,
                                    std::string& text,
                                    MetaVector& mt,
-                                   details::Grammar& g);
+                                   fl::Grammar& g);
 
     }  // namespace extra
 
-    bool isRecognized(const std::string& text, const details::Grammar& g);
+    bool isRecognized(const std::string& text, const fl::Grammar& g);
 }  // namespace fl::cyk

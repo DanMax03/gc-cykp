@@ -28,6 +28,7 @@ namespace ui {
         explicit Talker(logic::ExceptionController& exceptor);
 
         void sendMessage(const char* msg, bool add_final_string = false) const;
+        void sendMessage(const std::string& msg, bool add_final_string = false) const;
         void sendHelpMessage() const;
         void sendTerminationMessage(const char* msg) const;
 
