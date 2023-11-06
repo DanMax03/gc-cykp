@@ -88,8 +88,7 @@ namespace {
         auto it = rtable.find(s);
 
         while (it != rtable.end() && (table[it->second].type & TokenType::kNonterminal) != TokenType::kNothing) {
-            ++nt_number;
-            s = nt_prefix + std::to_string(nt_number);
+            s = nt_prefix + std::to_string(nt_number++);
             it = rtable.find(s);
         }
 
