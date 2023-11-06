@@ -1,111 +1,113 @@
 #include "CYK_Algorithm.h"
 
 
-namespace cyk_details {
+namespace fl::cyk {
+    namespace cyk_details {
+        void initNonterminalTokenKeyTable(NonterminalTokenKeyTable& nt_table, const Grammar& g) {
+            nt_table.reserve(g.tntable.nt_count);
 
-    namespace extra {
+            size_t nonterminal_count = 0;
 
-        size_t initMetaVector(MetaVector& mvec, const details::Grammar& g) {
-            mvec.resize(g.tntable.table.size());
+            for (const auto& [key, entry] : g.tntable.table) {
+                if ((entry.type & TokenType::kNonterminal) == TokenType::kNothing) {
+                    continue;
+                }
 
-            size_t terminal_count = 0;
-
-            for (auto& record : g.tntable.table) {
-                if ((record.second.type & details::TableValue::k_Nonterminal) == 0) continue;
-
-                mvec[record.first] = terminal_count;
-                ++terminal_count;
+                nt_table[key] = nonterminal_count++;
             }
-
-            return terminal_count;
         }
 
-        void initTerminalMultirulesVector(details::MultirulesMap& mm, const details::Grammar& g) {
-            for (auto& [nt_index, rrs_vec] : g.multirules) {
-                for (auto& rrs : rrs_vec) {
-                    if (!rrs.nt_indexes.empty()) continue;
+        void initTerminalMultirulesVector(MultirulesMap& mm, const Grammar& g) {
+            for (const auto& [nt_index, multirrs] : g.multirules) {
+                for (const auto& rrs : multirrs) {
+                    if (!rrs.nt_indexes.empty()) {
+                        continue;
+                    }
 
                     mm[nt_index].push_back(rrs);
                 }
             }
         }
 
-        bool isTerminalRecognized(const std::string_view sv,
-                                  const details::RuleRightSide& rrs,
-                                  const details::TokenTable::Table& table) {
-            std::string concat_s = "";
-
-            for (auto& t_code : rrs.sequence) {
-                concat_s += table.at(t_code).token;
-            }
-
-            return sv == concat_s;
-        }
-
         void initRecognitionVector(std::vector<SubstringVector>& v,
                                    const std::string& text,
-                                   MetaVector& mvec,
-                                   const details::Grammar& g) {
-            details::MultirulesMap terminal_multirules;
+                                   NonterminalTokenKeyTable& nt_table,
+                                   const Grammar& g) {
+            MultirulesMap terminal_multirules;
             std::string_view text_sv;
-
             initTerminalMultirulesVector(terminal_multirules, g);
+
+            auto isTerminalRecognized = [&](std::string_view sv, const RuleRightSide& rrs) {
+                return std::any_of(rrs.sequence.begin(), rrs.sequence.end(), [&](const TokenKey key) {
+                    return sv == g.tntable.table.at(key).token;
+                });
+            };
 
             for (size_t len = 0; len <= text.size(); ++len) {
                 for (size_t pos = 0; pos + len <= text.size(); ++pos) {
-                    for (auto& [nt_code, rrs_vec] : terminal_multirules) {
-                        for (auto& rrs : rrs_vec) {
-                            v[mvec[nt_code]][len][pos] = isTerminalRecognized(text_sv.substr(pos, len),
-                                                                            rrs,
-                                                                            g.tntable.table);
+                    for (const auto& [nt_code, rrs_vec] : terminal_multirules) {
+                        for (const auto& rrs : rrs_vec) {
+                            // todo: reduce cache misses by changing the order of indices
+                            v[nt_table[nt_code]][len][pos] = isTerminalRecognized(text_sv.substr(pos, len), rrs);
+
+                            if (v[nt_table[nt_code]][len][pos]) {
+                                break;
+                            }
                         }
                     }
                 }
             }
         }
         
-    }  // namespace extra
-    
-    bool isRecognized(const std::string& text, const details::Grammar& g) {
-        using namespace cyk_details::extra;
+    }  // namespace cyk_details
 
-        MetaVector meta_vector;
+    // g must be in CNF
+    bool isRecognized(const std::string& text, const fl::Grammar& g) {
+        using namespace cyk_details;
 
-        size_t terminal_count = initMetaVector(meta_vector, g);
-
-        std::vector<SubstringVector> is_recognized(terminal_count, SubstringVector(text.size() + 1));
-
-        // is_recognized[meta_table[nt_code]][length][position] == true,
+        NonterminalTokenKeyTable nt_table;
+        initNonterminalTokenKeyTable(nt_table, g);
+        // is_recognized[nt_table[nt_code]][length][position] == true,
         // if there is an output for the grammar to text[position:position + length]
-        initRecognitionVector(is_recognized, text, meta_vector, g);
+        // that starts from nt_code
+        std::vector<SubstringVector> is_recognized(g.tntable.nt_count,
+                                                   SubstringVector(text.size() + 1,
+                                                                   std::vector<bool>(text.size(), false)));
+        initRecognitionVector(is_recognized, text, nt_table, g);
 
-        size_t nt_meta_code;
-        size_t a_meta_code;
-        size_t b_meta_code;
+        size_t nt_code;
+        size_t a_nt_code;
+        size_t b_nt_code;
 
         for (size_t len = 2; len <= text.size(); ++len) {
             for (size_t pos = 0; pos + len <= text.size(); ++pos) {
-                for (auto& [nt_code, rrs_vec] : g.multirules) {
-                    nt_meta_code = meta_vector[nt_code];
+                for (const auto& [nt_key, multirrs] : g.multirules) {
+                    nt_code = nt_table[nt_key];
 
-                    for (auto& rrs : rrs_vec) {
-                        if (rrs.nt_indexes.empty()) continue;
+                    for (const auto& rrs : multirrs) {
+                        if (rrs.nt_indexes.empty()) {
+                            continue;
+                        }
 
-                        a_meta_code = meta_vector[rrs.sequence[0]];
-                        b_meta_code = meta_vector[rrs.sequence[1]];
+                        // Here we depend on CNF. If there are nonterminals
+                        // in the rrs, then it's possible only and only when
+                        // the rule looks like A -> BC
+                        a_nt_code = nt_table[rrs.sequence[0]];
+                        b_nt_code = nt_table[rrs.sequence[1]];
+                        is_recognized[nt_code][len][pos] = is_recognized[a_nt_code][len][pos] &&
+                                is_recognized[b_nt_code][0][0];
 
-                        for (size_t k = 0; !is_recognized[nt_meta_code][len][pos] &&
-                                           k <= len; ++k) {
-                            is_recognized[nt_meta_code][len][pos] =
-                                    is_recognized[a_meta_code][k][pos] &&
-                                    is_recognized[b_meta_code][len - k][pos + k];
+                        for (size_t k = 0; !is_recognized[nt_code][len][pos] && k < len; ++k) {
+                            is_recognized[nt_code][len][pos] =
+                                    is_recognized[a_nt_code][k][pos] &&
+                                    is_recognized[b_nt_code][len - k][pos + k];
                         }
                     }
                 }
             }
         }
 
-        return is_recognized[meta_vector[g.start]][text.size()][0];
+        return is_recognized[nt_table[g.start]][text.size()][0];
     }
 
-}  // namespace cyk_details
+}  // namespace fl::cyk

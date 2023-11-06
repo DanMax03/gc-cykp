@@ -51,6 +51,10 @@ namespace {
 }  // namespace
 
 namespace fl {
+    TokenType operator&(TokenType a, TokenType b) {
+        return static_cast<TokenType>(static_cast<int>(a) & static_cast<int>(b));
+    }
+
     TokenType operator^(TokenType a, TokenType b) {
         return static_cast<TokenType>(static_cast<int>(a) ^ static_cast<int>(b));
     }
@@ -68,11 +72,19 @@ namespace fl {
     }
 
     TokenKey TokenTable::insert(std::string&& s, TokenType type) {
+        // todo: assert for TokenType
         auto it1 = rtable.find(s);
 
         if (it1 != rtable.end()) {
+            if (type == TokenType::kNonterminal) {
+                ++nt_count;
+            }
             assignOr(table[it1->second].type, type);
             return it1->second;
+        }
+
+        if (type == TokenType::kNonterminal) {
+            ++nt_count;
         }
         
         auto it2 = table.emplace(table.size(), TableEntry{std::move(s), type}).first;
@@ -85,9 +97,16 @@ namespace fl {
     void TokenTable::erase(TokenKey key, TokenType type) {
         auto it = table.find(key);
 
+        if ((type & TokenType::kNonterminal) != TokenType::kNothing) {
+            --nt_count;
+        }
+
+        // todo: assert for it->second.type >=(bitwise) type
         assignXor(it->second.type, type);
 
-        if (it->second.type != TokenType::kNothing) return;
+        if (it->second.type != TokenType::kNothing) {
+            return;
+        }
 
         rtable.erase(it->second.token);
         table.erase(it);

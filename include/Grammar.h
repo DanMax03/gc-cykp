@@ -17,6 +17,7 @@ namespace fl {
         kNonterminal = 0b10
     };
 
+    TokenType operator&(TokenType a, TokenType b);
     TokenType operator^(TokenType a, TokenType b);
     TokenType operator|(TokenType a, TokenType b);
 
@@ -45,6 +46,7 @@ namespace fl {
 
         Table table;
         ReversedTable rtable;
+        size_t nt_count{0};
 
         TokenKey insert(std::string&& s, TokenType type);
         void erase(TokenKey key, TokenType type);
@@ -81,7 +83,7 @@ namespace fl {
         TokenKey start;
 
         void clear() noexcept;
-        std::string toString() const;
+        [[nodiscard]] std::string toString() const;
     };
 
     bool operator==(const Grammar& a, const Grammar& b);
@@ -97,7 +99,7 @@ namespace fl {
         void addRuleRightSide();
         void pushToken(std::string&& token, TokenType type);
 
-        Grammar&& getGrammar() &&;
+        [[nodiscard]] Grammar&& getGrammar() &&;
 
     private:
         using GrammarRefWrapper = std::reference_wrapper<Grammar>;
