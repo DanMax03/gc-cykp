@@ -19,7 +19,7 @@ namespace ui {
         }
     }
 
-    void Talker::sendMessage(std::string& msg, bool add_final_string) const {
+    void Talker::sendMessage(const std::string& msg, bool add_final_string) const {
         sendMessage(msg.c_str(), add_final_string);
     }
 
