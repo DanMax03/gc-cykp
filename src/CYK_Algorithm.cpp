@@ -40,10 +40,21 @@ namespace {
         std::string_view text_sv;
         initTerminalMultirulesVector(terminal_multirules, g);
 
+        // There may be multiple terminals in one RuleRightSide
         auto isTerminalRecognized = [&](std::string_view sv, const RuleRightSide& rrs) {
-            return std::any_of(rrs.sequence.begin(), rrs.sequence.end(), [&](const TokenKey key) {
-                return sv == g.tntable.table.at(key).token;
-            });
+            ssize_t pos = 0;
+
+            for (auto t_key : rrs.sequence) {
+                auto& token = g.tntable.table.at(t_key).token;
+
+                if (sv.substr(pos, token.size()) != token) {
+                    return false;
+                }
+
+                pos += static_cast<ssize_t>(token.size());
+            }
+
+            return true;
         };
 
         for (size_t len = 0; len <= text.size(); ++len) {

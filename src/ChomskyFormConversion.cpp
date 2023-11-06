@@ -160,33 +160,30 @@ namespace {
     }
 
     void addUniqueStart(Grammar& g) {
-        size_t unique_start = insertUniqueNonterminal(g);
-
+        TokenKey unique_start = insertUniqueNonterminal(g);
         g.multirules[unique_start].push_back(RuleRightSide{{g.start}, {0}});
         g.start = unique_start;
     }
 
     void congregateEmptyGeneratingNonterminals(Grammar& g) {
-        {
-            auto empty_it = g.tntable.rtable.find("");
+        static const int kNothing = 0b000;
+        static const int kSeen = 0b001;
+        static const int kEmptyGenerating = 0b010;
+        static const int kHasEmptyRule = 0b100;
 
-            if (empty_it == g.tntable.rtable.end() ||
-                (g.tntable.table[empty_it->second].type & TokenType::kNonterminal) == 0) {
-                addUniqueStart(g);
-                return;
-            }
+        auto empty_it = g.tntable.rtable.find("");
+
+        if (empty_it == g.tntable.rtable.end() ||
+            (g.tntable.table[empty_it->second].type & TokenType::kNonterminal) == TokenType::kNothing) {
+            addUniqueStart(g);
+            return;
         }
 
-        static const int kNothing = 0b0;
-        static const int kSeen = 0b1;
-        static const int k_EmptyGenerating = 0b10;
-        static const int k_HasEmptyRule = 0b100;
-
-        const size_t empty_code = g.tntable.rtable[""];
+        const TokenKey empty_key = empty_it->second;
         auto& table = g.tntable.table;
 
-        std::vector<int> nt_flags(g.tntable.table.size());
-        std::stack<size_t> dfs_stack;
+        std::vector<int> nt_states(g.tntable.table.size());
+        std::stack<TokenKey> dfs_stack;
         size_t cur;
         int indicator;
 
@@ -195,50 +192,50 @@ namespace {
         while (!dfs_stack.empty()) {
             cur = dfs_stack.top();
 
-            if (nt_flags[cur] & kSeen) {
+            if (nt_states[cur] & kSeen) {
                 dfs_stack.pop();
 
                 for (auto& rrs : g.multirules[cur]) {
                     if (isRuleRightSidesEqual(rrs,
-                                              RuleRightSide{{empty_code}, {}},
+                                              RuleRightSide{{empty_key}, {}},
                                               table,
                                               table)) {
-                        nt_flags[cur] |= k_EmptyGenerating | k_HasEmptyRule;
+                        nt_states[cur] |= kEmptyGenerating | kHasEmptyRule;
                         break;
                     }
 
                     if (rrs.nt_indexes.empty()) continue;
 
-                    indicator = k_EmptyGenerating;
+                    indicator = kEmptyGenerating;
 
                     if (rrs.sequence.size() == 1) {
-                        indicator &= nt_flags[rrs.sequence.front()];
-                        nt_flags[cur] |= indicator;
+                        indicator &= nt_states[rrs.sequence.front()];
+                        nt_states[cur] |= indicator;
                         continue;
                     }
 
-                    if (nt_flags[rrs.sequence.front()] & k_EmptyGenerating) {
+                    if (nt_states[rrs.sequence.front()] & kEmptyGenerating) {
                         g.multirules[cur].push_back(RuleRightSide{{rrs.sequence.back()}, {0}});
                     } else {
                         indicator = kNothing;
                     }
 
-                    if (nt_flags[rrs.sequence.back()] & k_EmptyGenerating) {
+                    if (nt_states[rrs.sequence.back()] & kEmptyGenerating) {
                         g.multirules[cur].push_back(RuleRightSide{{rrs.sequence.front()}, {0}});
                     } else {
                         indicator = kNothing;
                     }
 
-                    nt_flags[cur] |= indicator;
+                    nt_states[cur] |= indicator;
                 }
             } else {
-                nt_flags[cur] = kSeen;
+                nt_states[cur] = kSeen;
 
                 for (auto& rrs : g.multirules[cur]) {
                     for (size_t nt_index : rrs.nt_indexes) {
-                        if (nt_flags[nt_index] & kSeen) continue;
+                        if (nt_states[nt_index] & kSeen) continue;
 
-                        nt_flags[nt_index] = kSeen;
+                        nt_states[nt_index] = kSeen;
                     }
                 }
             }
@@ -247,13 +244,13 @@ namespace {
         std::vector<fl::RuleRightSide>::iterator rm_it;
 
         for (auto it = g.multirules.begin(); it != g.multirules.end(); ++it) {
-            if ((nt_flags[it->first] & k_HasEmptyRule) == 0) continue;
+            if ((nt_states[it->first] & kHasEmptyRule) == 0) continue;
 
             rm_it = std::remove_if(it->second.begin(),
                                    it->second.end(),
-                                   [empty_code, &table](const RuleRightSide& rule) {
+                                   [empty_key, &table](const RuleRightSide& rule) {
                                        return isRuleRightSidesEqual(rule,
-                                                                    RuleRightSide{{empty_code}, {}},
+                                                                    RuleRightSide{{empty_key}, {}},
                                                                     table,
                                                                     table);
                                    });
@@ -266,7 +263,7 @@ namespace {
         }
 
         addUniqueStart(g);
-        g.multirules[g.start].push_back(RuleRightSide{{empty_code}, {}});
+        g.multirules[g.start].push_back(RuleRightSide{{empty_key}, {}});
     }
 
     void deleteNonterminalChains(Grammar& g) {
