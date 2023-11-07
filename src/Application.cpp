@@ -6,6 +6,11 @@
 #include <filesystem>
 
 namespace logic {
+    Application::Application()
+        : m_talker(std::make_unique<ui::Talker>(m_exceptor)) {
+        m_exceptor.setTalker(m_talker);
+    }
+
     void Application::validatePaths(ui::ParsedArguments& pargs) {
         using namespace std::filesystem;
 
@@ -35,6 +40,11 @@ namespace logic {
     int Application::exec(int argc, char** argv) {
         using ProgramMode = ui::ParsedArguments::ProgramMode;
         auto pargs = ui::parseArguments(m_exceptor, argc, argv);
+
+        if (pargs.need_help) {
+            m_talker->sendHelpMessage();
+            return 0;
+        }
 
         validatePaths(pargs);
 

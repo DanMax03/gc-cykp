@@ -56,5 +56,9 @@ namespace ui {
         }
         out << final_string;
     }
+
+    void Talker::flush() {
+        out.flush();
+    }
 }  // namespace ui
 

@@ -7,6 +7,8 @@
 namespace logic {
     class Application {
     public:
+        Application();
+
         int exec(int argc, char* argv[]);
 
     private:

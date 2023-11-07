@@ -13,6 +13,7 @@ namespace logic {
     void ExceptionController::sendException(const char* msg) noexcept(EXCEPTION_POLICY_INDEX == 0) {
         if constexpr(EXCEPTION_POLICY_INDEX == 0) {
             m_talker->sendTerminationMessage(msg);
+            m_talker->flush();
             std::terminate();
         } else {
             throw std::runtime_error(msg);

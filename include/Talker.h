@@ -31,6 +31,7 @@ namespace ui {
         void sendMessage(const std::string& msg, bool add_final_string = false) const;
         void sendHelpMessage() const;
         void sendTerminationMessage(const char* msg) const;
+        void flush();
 
     private:
         void sendTerminationString() const;
