@@ -1,24 +1,12 @@
 #include "CYK_Algorithm.h"
 
+#include "NonterminalCompression.h"
+
 namespace {
     using namespace fl;
+    using namespace fl::algo;
 
-    using NonterminalTokenKeyTable = std::unordered_map<TokenKey, size_t>;
     using SubstringVector = std::vector<std::vector<bool>>;
-
-    void initNonterminalTokenKeyTable(NonterminalTokenKeyTable& nt_table, const Grammar& g) {
-        nt_table.reserve(g.tntable.nt_count);
-
-        size_t nonterminal_count = 0;
-
-        for (const auto& [key, entry] : g.tntable.table) {
-            if ((entry.type & TokenType::kNonterminal) == TokenType::kNothing) {
-                continue;
-            }
-
-            nt_table[key] = nonterminal_count++;
-        }
-    }
 
     void initTerminalMultirulesVector(MultirulesMap& mm, const Grammar& g) {
         for (const auto& [nt_index, multirrs] : g.multirules) {
@@ -73,7 +61,7 @@ namespace {
     }
 }  // namespace
 
-namespace fl::cyk {
+namespace fl::algo::cyk {
     // g must be in CNF
     bool isRecognized(const std::string& text, const fl::Grammar& g) {
         NonterminalTokenKeyTable nt_table;
@@ -120,4 +108,4 @@ namespace fl::cyk {
 
         return is_recognized[text.size()][0][nt_table[g.start]];
     }
-}  // namespace fl::cyk
+}  // namespace fl::algo::cyk

@@ -18,6 +18,7 @@ target_sources(${PROJECT_NAME}
         src/Talker.cpp
         src/Grammar.cpp
         src/isInChomskyForm.cpp
+        src/NonterminalCompression.cpp
         src/ChomskyFormConversion.cpp
         src/CYK_Algorithm.cpp
         src/execConversion.cpp
