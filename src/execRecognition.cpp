@@ -50,11 +50,11 @@ namespace logic {
         }
 
         if (pargs.is_already_converted) {
-            if (!isInChomskyForm(g)) {
+            if (!fl::algo::isInChomskyForm(g)) {
                 m_exceptor.sendException("the grammar is said to be in Chomsky form, but it is not.\n");
             }
         } else {
-            convertToChomskyForm(g);
+            fl::algo::convertToChomskyForm(g, *pargs.conversion_end_phase);
         }
 
         if (fout.is_open()) {
@@ -63,7 +63,7 @@ namespace logic {
             m_talker->sendMessage("The converted grammar:\n" + g.toString());
         }
 
-        bool recognition_res = fl::cyk::isRecognized(text, g);
+        bool recognition_res = fl::algo::cyk::isRecognized(text, g);
 
         std::cout << std::string(recognition_res ? "Yes" : "No") +
                      ", the text is" +

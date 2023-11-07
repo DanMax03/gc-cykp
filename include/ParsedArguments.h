@@ -16,7 +16,7 @@ namespace ui {
         bool need_help = false;
         bool is_already_converted = false;
         ProgramMode mode = ProgramMode::kUnknown;
-        std::optional<int> convertation_end_phase;
+        std::optional<int> conversion_end_phase;
         std::optional<Path> text_filename;
         Path grammar_filename;
         std::optional<Path> converted_grammar_filename;

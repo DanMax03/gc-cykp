@@ -32,7 +32,7 @@ namespace logic {
             }
 
 
-            fl::algo::convertToChomskyForm(g, *pargs.convertation_end_phase);
+            fl::algo::convertToChomskyForm(g, *pargs.conversion_end_phase);
 
             if (fout.is_open()) {
                 fout << g;

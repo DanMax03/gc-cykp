@@ -80,9 +80,9 @@ namespace ui {
 
                     if (argument_exists(i) && !is_argument_flag(i)) {
                         // todo: check the length of the argument
-                        pargs.convertation_end_phase = std::stoi(argv[i]);
+                        pargs.conversion_end_phase = std::stoi(argv[i]);
 
-                        if (*pargs.convertation_end_phase < 0) {
+                        if (*pargs.conversion_end_phase < 0) {
                             exceptor.sendException("Expected a positive number after the '-C' flag. Got negative.\n");
                         }
                     } else {
