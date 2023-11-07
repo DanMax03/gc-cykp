@@ -39,6 +39,8 @@ namespace ui {
                 catch (...) {
                     exceptor.sendException("Failed to assign a grammar path to std::filesystem::path.\n");
                 }
+                
+                continue;
             }
 
             if (!is_flag_short(arg)) {
