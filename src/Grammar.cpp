@@ -176,7 +176,7 @@ namespace fl {
     // TODO: escape sequences are not handled
     void outputRuleRightSide(std::ostream& out,
                              const RuleRightSide& rrs,
-                             const std::map<size_t, TableEntry>& table) {
+                             const TokenTable::Table& table) {
         const bool has_nt_indexes = !rrs.nt_indexes.empty();
         const size_t prefix_size = !has_nt_indexes ? rrs.sequence.size() : rrs.nt_indexes.front();
 
@@ -184,7 +184,9 @@ namespace fl {
             out << "\"" << table.at(rrs.sequence[i]).token << "\" ";
         }
 
-        if (!has_nt_indexes) return;
+        if (!has_nt_indexes) {
+            return;
+        }
 
         for (ssize_t i = 1; i < rrs.nt_indexes.size(); ++i) {
             out << table.at(rrs.sequence[rrs.nt_indexes[i - 1]]).token << " ";
@@ -472,19 +474,19 @@ namespace fl {
                 continue;
             }
 
+            shown.insert(multirule.first);
             bfs_queue.push(multirule.first);
             
             while (!bfs_queue.empty()) {
                 cur = bfs_queue.front();
                 bfs_queue.pop();
-                shown.insert(cur);
     
                 out << table.at(cur).token << "\n";
     
                 const auto& multirrs = g.multirules.find(cur)->second;
     
                 out << ": ";
-                outputRuleRightSide(out, multirrs.front(), table);
+                outputRuleRightSide(out, multirrs[0], table);
                 out << "\n";
     
                 for (ssize_t i = 1; i < multirrs.size(); ++i) {
@@ -497,12 +499,14 @@ namespace fl {
     
                 for (const auto& rrs : multirrs) {
                     for (const auto& index : rrs.nt_indexes) {
-                        if (shown.find(rrs.sequence[index]) != shown.end()) {
+                        const auto key = rrs.sequence[index];
+
+                        if (shown.find(key) != shown.end()) {
                             continue;
                         }
     
-                        shown.insert(rrs.sequence[index]);
-                        bfs_queue.push(rrs.sequence[index]);
+                        shown.insert(key);
+                        bfs_queue.push(key);
                     }
                 }
             }

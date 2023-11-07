@@ -72,7 +72,7 @@ namespace fl {
     
     void outputRuleRightSide(std::ostream& out,
                              const RuleRightSide& rrs,
-                             const TokenTable& tntable);
+                             const TokenTable::Table& table);
 
     using MultiruleRightSide = std::vector<RuleRightSide>;
     using MultirulesMap = std::map<TokenKey, MultiruleRightSide>;

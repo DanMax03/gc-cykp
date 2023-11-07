@@ -12,7 +12,7 @@ namespace logic {
         int exec(int argc, char* argv[]);
 
     private:
-        void validatePaths(ui::ParsedArguments& pargs);
+        void preparePaths(ui::ParsedArguments& pargs);
         void execRecognition(const ui::ParsedArguments& pargs);
         void execConversion(const ui::ParsedArguments& pargs);
 

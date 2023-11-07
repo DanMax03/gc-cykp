@@ -11,10 +11,10 @@ namespace logic {
         m_exceptor.setTalker(m_talker);
     }
 
-    void Application::validatePaths(ui::ParsedArguments& pargs) {
+    void Application::preparePaths(ui::ParsedArguments& pargs) {
         using namespace std::filesystem;
 
-        auto check_path = [this](const path& p, const std::string& path_name) {
+        auto preparePath = [this](path& p, const std::string& path_name) {
             if (!exists(p)) {
                 m_exceptor.sendException("The " + path_name + " doesn't exist.\n");
             }
@@ -24,10 +24,10 @@ namespace logic {
             }
         };
 
-        check_path(pargs.grammar_filename, "grammar path");
+        preparePath(pargs.grammar_filename, "grammar path");
 
         if (pargs.text_filename.has_value()) {
-            check_path(*pargs.text_filename, "text path");
+            preparePath(*pargs.text_filename, "text path");
         }
 
         if (pargs.converted_grammar_filename.has_value()) {
@@ -46,16 +46,16 @@ namespace logic {
             return 0;
         }
 
-        validatePaths(pargs);
+        preparePaths(pargs);
 
         switch (pargs.mode) {
             case ProgramMode::kUnknown:
                 m_exceptor.sendException("Incorrect arguments, no mode provided.\n");
             case ProgramMode::kConversion:
-                execRecognition(pargs);
+                execConversion(pargs);
                 break;
             case ProgramMode::kRecognition:
-                execConversion(pargs);
+                execRecognition(pargs);
                 break;
         }
 
