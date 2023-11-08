@@ -1,0 +1,23 @@
+unique_nonterminal_0
+: "(" 
+;
+unique_nonterminal_2
+: ")" 
+;
+unique_nonterminal_3
+: "(" 
+;
+unique_nonterminal_4
+: ")(" 
+;
+unique_nonterminal_6
+: ")" 
+;
+unique_nonterminal_8
+: unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_9
+: "" 
+| unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
