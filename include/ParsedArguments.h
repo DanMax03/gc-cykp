@@ -1,26 +1,24 @@
-#ifndef _INCLUDE_PARSEDARGUMENTS_H
-#define _INCLUDE_PARSEDARGUMENTS_H
+#pragma once
 
 #include <optional>
+#include <filesystem>
 
-namespace ci {
-
+namespace ui {
     struct ParsedArguments {
+        using Path = std::filesystem::path;
+
         enum class ProgramMode {
-            k_Unknown,
-            k_Recognition,
-            k_Convertation
+            kUnknown,
+            kRecognition,
+            kConversion
         };
     
         bool need_help = false;
         bool is_already_converted = false;
-        ProgramMode mode = ProgramMode::k_Unknown;
-        std::optional<int> convertation_end_phase = std::nullopt;
-        std::optional<std::string> text_filename = std::nullopt;
-        std::string grammar_filename;
-        std::optional<std::string> converted_grammar_filename = std::nullopt;
+        ProgramMode mode = ProgramMode::kUnknown;
+        std::optional<int> conversion_end_phase;
+        std::optional<Path> text_filename;
+        Path grammar_filename;
+        std::optional<Path> converted_grammar_filename;
     };
-   
-}  // namespace ci
-
-#endif  // _INCLUDE_PARSEDARGUMENTS_H
+}  // namespace ui

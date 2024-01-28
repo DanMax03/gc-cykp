@@ -1,4 +1,4 @@
-#include "execConvertation.h"
+#include "Application.h"
 
 #include <iostream>
 #include <fstream>
@@ -6,17 +6,12 @@
 #include <map>
 #include <exception>
 
-#include "ParsedArguments.h"
-#include "Talker.h"
 #include "Grammar.h"
 #include "GrammarAlgorithms.h"
 
-namespace details {
-
-    [[nodiscard]] int execConvertation(const ci::ParsedArguments& pargs) {
-        ci::Talker talker;
-
-        Grammar g;
+namespace logic {
+    void Application::execConversion(const ui::ParsedArguments& pargs) {
+        fl::Grammar g;
 
         try {
             std::ifstream fin(pargs.grammar_filename);
@@ -37,7 +32,7 @@ namespace details {
             }
 
 
-            convertToChomskyForm(g);
+            fl::algo::convertToChomskyForm(g, *pargs.conversion_end_phase);
 
             if (fout.is_open()) {
                 fout << g;
@@ -46,12 +41,8 @@ namespace details {
             }
         }
         catch (std::exception& e) {
-            talker.sendTerminationMessage(e.what());
-            return 1;
+            m_exceptor.sendException(e.what());
         }
-
-        return 0;
     }
-
-}  // namespace details
+}  // namespace logic
 
