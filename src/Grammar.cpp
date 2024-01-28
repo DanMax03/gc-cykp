@@ -5,6 +5,7 @@
 #include <set>
 #include <sstream>
 #include <string_view>
+#include <cassert>
 
 namespace {
     bool isValidNonterminal(std::string_view sv) {
@@ -29,6 +30,10 @@ namespace {
             }
 
             ++i;
+
+            if (i == sv.size()) {
+                throw std::invalid_argument("met illegal escape sequence.\n");
+            }
 
             switch (sv[i]) {
                 case 'a': res.push_back('\a'); break;
@@ -76,6 +81,7 @@ namespace fl {
         auto it1 = rtable.find(s);
 
         if (it1 != rtable.end()) {
+            // todo: question of guarantee about given type and table[it1->second].type
             if (type == TokenType::kNonterminal) {
                 ++nt_count;
             }
@@ -86,10 +92,13 @@ namespace fl {
         if (type == TokenType::kNonterminal) {
             ++nt_count;
         }
-        
+
+        assert(table.size() == rtable.size());
         auto it2 = table.emplace(table.size(), TableEntry{std::move(s), type}).first;
 
         rtable.emplace(it2->second.token, rtable.size());
+        assert(table.size() == rtable.size());
+
 
         return it2->first;
     }
@@ -97,11 +106,13 @@ namespace fl {
     void TokenTable::erase(TokenKey key, TokenType type) {
         auto it = table.find(key);
 
+        // todo: assert for it->second.type >=(bitwise) type
+
         if ((type & TokenType::kNonterminal) != TokenType::kNothing) {
+            assert(it->second.type & TokenType::kNonterminal);
             --nt_count;
         }
 
-        // todo: assert for it->second.type >=(bitwise) type
         assignXor(it->second.type, type);
 
         if (it->second.type != TokenType::kNothing) {
@@ -197,6 +208,8 @@ namespace fl {
         }
 
         out << table.at(rrs.sequence[rrs.nt_indexes.back()]).token << " ";
+
+        // todo: maybe handle excessive space?
 
         for (ssize_t i = static_cast<ssize_t>(rrs.nt_indexes.back()) + 1; i < rrs.sequence.size(); ++i) {
             out << "\"" << table.at(rrs.sequence[i]).token << "\" ";
@@ -482,9 +495,14 @@ namespace fl {
                 bfs_queue.pop();
     
                 out << table.at(cur).token << "\n";
-    
+
                 const auto& multirrs = g.multirules.find(cur)->second;
-    
+
+                if (multirrs.empty()) {  // todo: fix input the same way
+                    out << ";\n";
+                    continue;
+                }
+
                 out << ": ";
                 outputRuleRightSide(out, multirrs[0], table);
                 out << "\n";

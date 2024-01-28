@@ -126,7 +126,7 @@ namespace {
 
         while (!dfs_stack.empty()) {
             cur = dfs_stack.top();
-            dfs_stack.pop(); // todo: potentially wrong
+            dfs_stack.pop(); 
 
             for (TokenKey generating_nt_key : nt_generating_nts[cur]) {
                  if (nt_states[nt_table[generating_nt_key]] & kGenerative) {
@@ -148,16 +148,17 @@ namespace {
         ungenerative_nt_keys.reserve(ungenerative_nt_count);
 
         for (auto it = g.multirules.begin(); it != g.multirules.end();) {
-            if (nt_states[nt_table[it->first]] & kGenerative) {
+            auto nt_key = it->first;
+            if (nt_states[nt_table[nt_key]] & kGenerative) {
                 ++it;
                 continue;
             }
 
             // todo: remove debug
-            std::cout << g.tntable.table[it->first].token << std::endl;
+            std::cout << g.tntable.table[nt_key].token << std::endl;
 
-            ungenerative_nt_keys.insert(it->first);
-            g.tntable.erase(it->first, TokenType::kNonterminal);
+            ungenerative_nt_keys.insert(nt_key);
+            g.tntable.erase(nt_key, TokenType::kNonterminal);
             it = g.multirules.erase(it);  // todo: handle terminals in g.tntable
         }
 
@@ -185,7 +186,6 @@ namespace {
 
                 return false;
             });
-
             multirrs.erase(rm_it, multirrs.end());
 
             std::cout << "\nAfter:\n";
@@ -197,6 +197,7 @@ namespace {
     }
 
     TokenKey insertUniqueNonterminal(Grammar& g) {
+        // todo: remove global static, it's better to make it depend on a TokenTable object
         static std::string nt_prefix = "unique_nonterminal_";
         static size_t nt_number = 0;
 
@@ -242,11 +243,9 @@ namespace {
             return;
         }
 
-        TokenKey unique_nt_key;
-        auto& rtable = g.tntable.rtable;
         std::vector<TokenKey> new_nt_keys(rrs.sequence.size());
         auto replaceTerminal = [&](ssize_t j) {
-            unique_nt_key = insertUniqueNonterminal(g);
+            TokenKey unique_nt_key = insertUniqueNonterminal(g);
             g.multirules[unique_nt_key] = {RuleRightSide{{rrs.sequence[j]}, {}}};
             new_nt_keys[j] = unique_nt_key;
         };
@@ -306,7 +305,7 @@ namespace {
     /**
      *
      * @param g - context-free grammar which rules follow only the next patterns:\n
-     * A -> a_1 ... a_n, where at least one of a_i is a non-empty terminal\n
+     * A -> a_1...a_n, where a_i is a terminal and at least one a_j is non-empty
      * A -> BC\n
      * A -> ""\n
      * A -> B\n
@@ -318,9 +317,12 @@ namespace {
     void congregateEmptyGeneratingNonterminals(Grammar& g) {
         using State = unsigned short;
 
-        static const State kNothing = 0b0;
-        static const State kEmptyGenerative = 0b1;
+        static const State kNothing = 0b00;
+        static const State kEmptyGenerative = 0b01;
+        static const State kSeen = 0b10;
 
+        // TODO: it's better to do a insertUniqueNonterminal that takes a given prefix
+        // so that I can make "unique_start_".
         static const auto addUniqueStart = [](Grammar& g) {
             TokenKey unique_start = insertUniqueNonterminal(g);
             g.multirules[unique_start].push_back(RuleRightSide{{g.start}, {0}});
@@ -334,28 +336,6 @@ namespace {
             addUniqueStart(g);
             return;
         }
-
-        const TokenKey empty_key = empty_it->second;
-        const auto isEmptyRule = [&, empty_key](const RuleRightSide& rrs) {
-            return std::all_of(rrs.sequence.begin(), rrs.sequence.end(), [&, empty_key](TokenKey t_key) {
-                return t_key == empty_key;
-            });
-        };
-
-        algo::NonterminalTokenKeyTable nt_table;
-        algo::initNonterminalTokenKeyTable(nt_table, g);
-
-        std::vector<State> nt_states(nt_table.size(), kNothing);
-        const auto isEmptyGeneratingRule = [&](const RuleRightSide& rrs) {
-            return std::all_of(rrs.sequence.begin(), rrs.sequence.end(), [&](TokenKey nt_key) {
-                return nt_states[nt_key] & kEmptyGenerative;
-            });
-        };
-        const auto isEmptyGenerativeNonterminal = [&](const TokenKey key) {
-            return std::any_of(g.multirules[key].begin(), g.multirules[key].end(), [&](const RuleRightSide& rrs) {
-                return !rrs.nt_indexes.empty() && isEmptyGeneratingRule(rrs);
-            });
-        };
 
         // Phase 1: searching empty generating nonterminals
         // Phase 1.1: construct a reversed graph on the nonterminals
@@ -379,66 +359,164 @@ namespace {
             }
         }
 
-        // Phase 1.2: searching through DFS in the reversed graph
+        // Phase 1.2: searching basic empty generating nonterminals (which have an empty rule)
+        const TokenKey empty_key = empty_it->second;
+        const auto isEmptyRule = [empty_key](const RuleRightSide& rrs) {
+            return rrs.nt_indexes.empty() && std::all_of(rrs.sequence.begin(), rrs.sequence.end(), [empty_key](TokenKey key) {
+                return key == empty_key;
+            });
+        };
+
+        algo::NonterminalTokenKeyTable nt_table;
+        algo::initNonterminalTokenKeyTable(nt_table, g);
+        std::vector<State> nt_states(nt_table.size(), kNothing);
+
+        const auto isEmptyGeneratingRule = [&](const RuleRightSide& rrs) {
+            return rrs.nt_indexes.empty() && std::all_of(rrs.sequence.begin(), rrs.sequence.end(), [&](TokenKey nt_key) {
+                return nt_states[nt_key] & kEmptyGenerative;
+            });
+        };
+        const auto isEmptyGenerativeNonterminal = [&](const TokenKey key) {
+            return std::any_of(g.multirules[key].begin(), g.multirules[key].end(), [&](const RuleRightSide& rrs) {
+                return isEmptyGeneratingRule(rrs);
+            });
+        };
+
         std::unordered_set<TokenKey> nts_with_empty_rule;
         nts_with_empty_rule.reserve(nt_table.size());
 
-        std::stack<TokenKey> dfs_stack;
-
         for (const auto& [nt_key, multirrs] : g.multirules) {
             for (const auto& rrs : multirrs) {
-                if (rrs.nt_indexes.empty() && isEmptyRule(rrs)) {
+                if (isEmptyRule(rrs)) {
                     nt_states[nt_table[nt_key]] = kEmptyGenerative;
                     nts_with_empty_rule.insert(nt_key);
-                    dfs_stack.push(nt_key);
+                    break;
                 }
             }
         }
 
-        TokenKey cur;
-
-        while (!dfs_stack.empty()) {
-            cur = dfs_stack.top();
-            dfs_stack.pop();
-
-            for (TokenKey generating_nt_key : nt_generating_nts[cur]) {
-                if (nt_states[nt_table[generating_nt_key]] & kEmptyGenerative) {
-                    continue;
-                }
-
-                if (isEmptyGenerativeNonterminal(generating_nt_key)) {
-                    nt_states[nt_table[generating_nt_key]] = kEmptyGenerative;
-                    dfs_stack.push(generating_nt_key);
+        // Phase 1.3: searching other empty generating nonterminals through DFS
+        {
+            std::stack<TokenKey> dfs_stack;
+            TokenKey cur;
+    
+            for (auto nt_key : nts_with_empty_rule) {
+                dfs_stack.push(nt_key);
+            }
+    
+            while (!dfs_stack.empty()) {
+                cur = dfs_stack.top();
+                dfs_stack.pop();
+    
+                for (const auto nt_key : nt_generating_nts[cur]) {
+                    if (nt_states[nt_table[nt_key]] & kEmptyGenerative) {
+                        continue;
+                    }
+    
+                    if (isEmptyGenerativeNonterminal(nt_key)) {
+                        nt_states[nt_table[nt_key]] |= kEmptyGenerative;
+                        dfs_stack.push(nt_key);
+                    }
                 }
             }
         }
 
-        // Phase 2: changing all the rules connected with empty generating nonterminals
-        for (auto& [nt_key, multirrs] : g.multirules) {
-            for (auto& rrs : multirrs) {
-                if (rrs.nt_indexes.size() != 2) {
-                    continue;
+        // Phase 2: searching new rules for each nonterminal by running DFS from the nonterminal
+        std::map<TokenKey, std::set<TokenKey>> multirrs_to_add;
+
+        {
+            struct DFSState {
+                TokenKey nt_key;
+                MultiruleRightSide::iterator rrs_it;
+            };
+
+            std::vector<State> dfs_nt_states(nt_states.size(), kNothing);
+            std::stack<DFSState> dfs_stack;
+            std::pair<TokenKey, RuleRightSide> fixed_rule;
+            const auto testChainRule = [&](const RuleRightSide& rrs) -> std::pair<bool, std::vector<TokenKey>> {
+                if (rrs.nt_indexes.empty()) {
+                    return {false, {}};
                 }
 
-                if (nt_states[nt_table[rrs.sequence[1]]] & kEmptyGenerative) {
-                    rrs.nt_indexes.pop_back();
-                    rrs.sequence.pop_back();
+                if (rrs.nt_indexes.size() == 1) {
+                    auto key = rrs.sequence[0];
+
+                    if (dfs_nt_states[nt_table[key]] & kSeen) {
+                        return {false, {}};
+                    } else {
+                        return {true, {key}};
+                    }
                 }
 
-                if (nt_states[nt_table[rrs.sequence[0]]] & kEmptyGenerative) {
-                    rrs.nt_indexes.pop_back();
-                    std::swap(rrs.sequence.front(), rrs.sequence.back());
-                    rrs.sequence.pop_back();
+                std::vector<TokenKey> accepted_nts;
+                accepted_nts.reserve(2);
+
+                for (int i = 0; i < 2; ++i) {
+                    if (dfs_nt_states[nt_table[rrs.sequence[i]]] & kSeen) {
+                        continue;
+                    }
+
+                    if (dfs_nt_states[nt_table[rrs.sequence[1 - i]]] & kEmptyGenerative) {
+                        accepted_nts.push_back(rrs.sequence[i]);
+                    }
+                }
+
+                return {!accepted_nts.empty(), std::move(accepted_nts)};
+            };
+    
+            for (auto& [nt_key, multirrs] : g.multirules) {
+                dfs_nt_states = nt_states;
+                dfs_nt_states[nt_table[nt_key]] |= kSeen;
+                dfs_stack.push({nt_key, multirrs.begin()});
+    
+                while (!dfs_stack.empty()) {
+                    auto& cur = dfs_stack.top();
+                    const auto& cur_multirrs = g.multirules[cur.nt_key];
+                    
+                    if (cur.rrs_it == cur_multirrs.end()) {
+                        dfs_stack.pop();
+                    } else {
+                        if (cur.rrs_it == cur_multirrs.begin()) {
+                            auto& rrs_to_add = multirrs_to_add[nt_key];
+
+                            for (const auto& rrs: cur_multirrs) {
+                                if (rrs.nt_indexes.size() != 2) {
+                                    continue;
+                                }
+
+                                for (int i = 0; i < 2; ++i) {
+                                    if (dfs_nt_states[nt_table[rrs.sequence[1 - i]]] & kEmptyGenerative) {
+                                        rrs_to_add.insert(rrs.sequence[i]);
+                                    }
+                                }
+                            }
+                        }
+
+                        for (; cur.rrs_it != cur_multirrs.end(); ++cur.rrs_it) {
+                            const auto& [is_chain_rule, next_nt_keys] = testChainRule(*cur.rrs_it);
+
+                            if (!is_chain_rule) {
+                                continue;
+                            }
+
+                            for (auto next_nt_key : next_nt_keys) {
+                                dfs_nt_states[nt_table[next_nt_key]] |= kSeen;
+                                dfs_stack.push({next_nt_key, g.multirules[next_nt_key].begin()});
+                            }
+                        }
+                    }
                 }
             }
-
-            auto rm_it = std::remove_if(multirrs.begin(), multirrs.end(), [](const RuleRightSide& rrs) {
-                return rrs.sequence.empty();
-            });
-            multirrs.erase(rm_it, multirrs.end());
+        }
+       
+        // Phase 3: adding new rules
+        for (const auto& [nt_key, rrs_to_add] : multirrs_to_add) {
+            for (const auto rrs_nt_key : rrs_to_add) {
+                g.multirules[nt_key].push_back({{rrs_nt_key}, {0}});
+            }
         }
 
-        // Phase 3: adding a unique grammar start, adding the empty rule if needed
+        // Phase 4: adding a unique grammar start, adding the empty rule if needed
         auto old_start = g.start;
 
         addUniqueStart(g);
@@ -447,8 +525,8 @@ namespace {
             g.multirules[g.start].push_back({{empty_key}, {}});
         }
 
-        // Phase 4: deleting empty rules
-        for (TokenKey nt_key : nts_with_empty_rule) {
+        // Phase 5: deleting empty rules
+        for (const auto nt_key : nts_with_empty_rule) {
             auto& multirrs = g.multirules[nt_key];
             auto rm_it = std::remove_if(multirrs.begin(), multirrs.end(), [&](const RuleRightSide& rrs) {
                 return rrs.nt_indexes.empty() && isEmptyRule(rrs);
@@ -565,23 +643,23 @@ namespace fl::algo {
         }
 
         deleteUnreachableNonterminals(g);
-        std::cout << g << "\n*******************************\n";
+        std::cout << g << "\n*******************************Unreachable" << std::endl;
         deleteUngenerativeNonterminals(g);
-        std::cout << g << "\n*******************************\n";
+        std::cout << g << "\n*******************************Ungenerative" << std::endl;
         deleteUnreachableNonterminals(g);
-        std::cout << g << "\n*******************************\n";
+        std::cout << g << "\n*******************************Unreachable" << std::endl;
         deleteMixedAndLongRules(g);
-        std::cout << g << "\n*******************************\n";
+        std::cout << g << "\n*******************************MixedAndLongRules" << std::endl;
         congregateEmptyGeneratingNonterminals(g);
-        std::cout << g << '\n' << g.tntable.table[g.start].token << "\n*******************************\n";
+        std::cout << g << '\n' << g.tntable.table[g.start].token << "\n*******************************EmptyGenerating" << std::endl;
         deleteNonterminalChains(g);
-        std::cout << g << "\n*******************************\n";
+        std::cout << g << "\n*******************************Nonterminal" << std::endl;
         deleteUnreachableNonterminals(g);
-        std::cout << g << "\n*******************************\n";
+        std::cout << g << "\n*******************************Unreachable\n";
         deleteUngenerativeNonterminals(g);
-        std::cout << g << "\n*******************************\n";
+        std::cout << g << "\n*******************************Ungenerative\n";
         deleteUnreachableNonterminals(g);
-        std::cout << g << "\n*******************************\n";
+        std::cout << g << "\n*******************************Unreachable\n";
     }
 
 }  // namespace fl::algo

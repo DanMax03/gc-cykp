@@ -35,7 +35,7 @@ elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 endif()
 
 target_compile_options(${PROJECT_NAME}
-    PUBLIC -g)
+        PUBLIC "-g")  # TODO: fix BUILD_FLAGS
 
 set_target_properties(${PROJECT_NAME}
     PROPERTIES
@@ -43,6 +43,7 @@ set_target_properties(${PROJECT_NAME}
 
 
 if (${BUILD_TESTS})
+    message("BUILD_TESTS is ON, so building tests...")
     add_subdirectory("${PROJECT_SOURCE_DIR}/testing")
 endif()
 

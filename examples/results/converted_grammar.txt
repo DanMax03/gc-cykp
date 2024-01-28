@@ -1,20 +1,415 @@
+input
+: "" 
+| line 
+;
+line
+: "(" line ")" 
+| "(" line ")(" line ")" 
+| "" 
+;
+
+*******************************Unreachable
+Removing ungenerative rules for the nonterminal input
+Before:
+"" 
+line 
+
+After:
+"" 
+line 
+Removing ungenerative rules for the nonterminal line
+Before:
+"(" line ")" 
+"(" line ")(" line ")" 
+"" 
+
+After:
+"(" line ")" 
+"(" line ")(" line ")" 
+"" 
+input
+: "" 
+| line 
+;
+line
+: "(" line ")" 
+| "(" line ")(" line ")" 
+| "" 
+;
+
+*******************************Ungenerative
+input
+: "" 
+| line 
+;
+line
+: "(" line ")" 
+| "(" line ")(" line ")" 
+| "" 
+;
+
+*******************************Unreachable
+input
+: "" 
+| line 
+;
+line
+: unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+| "" 
+;
 unique_nonterminal_0
 : "(" 
 ;
 unique_nonterminal_2
-: ")" 
+: line unique_nonterminal_1 
 ;
 unique_nonterminal_3
 : "(" 
+;
+unique_nonterminal_8
+: line unique_nonterminal_7 
+;
+unique_nonterminal_1
+: ")" 
+;
+unique_nonterminal_7
+: unique_nonterminal_4 unique_nonterminal_6 
 ;
 unique_nonterminal_4
 : ")(" 
 ;
 unique_nonterminal_6
+: line unique_nonterminal_5 
+;
+unique_nonterminal_5
 : ")" 
 ;
+
+*******************************MixedAndLongRules
+input
+: line 
+;
+line
+: unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+unique_nonterminal_0
+: "(" 
+;
+unique_nonterminal_2
+: line unique_nonterminal_1 
+| unique_nonterminal_1 
+;
+unique_nonterminal_3
+: "(" 
+;
 unique_nonterminal_8
+: line unique_nonterminal_7 
+| unique_nonterminal_7 
+;
+unique_nonterminal_1
+: ")" 
+;
+unique_nonterminal_7
 : unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_4
+: ")(" 
+;
+unique_nonterminal_6
+: line unique_nonterminal_5 
+| unique_nonterminal_5 
+;
+unique_nonterminal_5
+: ")" 
+;
+unique_nonterminal_9
+: input 
+| "" 
+;
+
+unique_nonterminal_9
+*******************************EmptyGenerating
+input
+: unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+unique_nonterminal_0
+: "(" 
+;
+unique_nonterminal_2
+: line unique_nonterminal_1 
+| ")" 
+;
+unique_nonterminal_3
+: "(" 
+;
+unique_nonterminal_8
+: line unique_nonterminal_7 
+| unique_nonterminal_4 unique_nonterminal_6 
+;
+line
+: unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+unique_nonterminal_1
+: ")" 
+;
+unique_nonterminal_7
+: unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_4
+: ")(" 
+;
+unique_nonterminal_6
+: line unique_nonterminal_5 
+| ")" 
+;
+unique_nonterminal_5
+: ")" 
+;
+unique_nonterminal_9
+: "" 
+| unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+
+*******************************Nonterminal
+line
+: unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+unique_nonterminal_0
+: "(" 
+;
+unique_nonterminal_2
+: line unique_nonterminal_1 
+| ")" 
+;
+unique_nonterminal_3
+: "(" 
+;
+unique_nonterminal_8
+: line unique_nonterminal_7 
+| unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_1
+: ")" 
+;
+unique_nonterminal_7
+: unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_4
+: ")(" 
+;
+unique_nonterminal_6
+: line unique_nonterminal_5 
+| ")" 
+;
+unique_nonterminal_5
+: ")" 
+;
+unique_nonterminal_9
+: "" 
+| unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+
+*******************************Unreachable
+Removing ungenerative rules for the nonterminal line
+Before:
+unique_nonterminal_0 unique_nonterminal_2 
+unique_nonterminal_3 unique_nonterminal_8 
+
+After:
+unique_nonterminal_0 unique_nonterminal_2 
+unique_nonterminal_3 unique_nonterminal_8 
+Removing ungenerative rules for the nonterminal unique_nonterminal_0
+Before:
+"(" 
+
+After:
+"(" 
+Removing ungenerative rules for the nonterminal unique_nonterminal_1
+Before:
+")" 
+
+After:
+")" 
+Removing ungenerative rules for the nonterminal unique_nonterminal_2
+Before:
+line unique_nonterminal_1 
+")" 
+
+After:
+line unique_nonterminal_1 
+")" 
+Removing ungenerative rules for the nonterminal unique_nonterminal_3
+Before:
+"(" 
+
+After:
+"(" 
+Removing ungenerative rules for the nonterminal unique_nonterminal_4
+Before:
+")(" 
+
+After:
+")(" 
+Removing ungenerative rules for the nonterminal unique_nonterminal_5
+Before:
+")" 
+
+After:
+")" 
+Removing ungenerative rules for the nonterminal unique_nonterminal_6
+Before:
+line unique_nonterminal_5 
+")" 
+
+After:
+line unique_nonterminal_5 
+")" 
+Removing ungenerative rules for the nonterminal unique_nonterminal_7
+Before:
+unique_nonterminal_4 unique_nonterminal_6 
+
+After:
+unique_nonterminal_4 unique_nonterminal_6 
+Removing ungenerative rules for the nonterminal unique_nonterminal_8
+Before:
+line unique_nonterminal_7 
+unique_nonterminal_4 unique_nonterminal_6 
+
+After:
+line unique_nonterminal_7 
+unique_nonterminal_4 unique_nonterminal_6 
+Removing ungenerative rules for the nonterminal unique_nonterminal_9
+Before:
+"" 
+unique_nonterminal_0 unique_nonterminal_2 
+unique_nonterminal_3 unique_nonterminal_8 
+
+After:
+"" 
+unique_nonterminal_0 unique_nonterminal_2 
+unique_nonterminal_3 unique_nonterminal_8 
+line
+: unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+unique_nonterminal_0
+: "(" 
+;
+unique_nonterminal_2
+: line unique_nonterminal_1 
+| ")" 
+;
+unique_nonterminal_3
+: "(" 
+;
+unique_nonterminal_8
+: line unique_nonterminal_7 
+| unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_1
+: ")" 
+;
+unique_nonterminal_7
+: unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_4
+: ")(" 
+;
+unique_nonterminal_6
+: line unique_nonterminal_5 
+| ")" 
+;
+unique_nonterminal_5
+: ")" 
+;
+unique_nonterminal_9
+: "" 
+| unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+
+*******************************Ungenerative
+line
+: unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+unique_nonterminal_0
+: "(" 
+;
+unique_nonterminal_2
+: line unique_nonterminal_1 
+| ")" 
+;
+unique_nonterminal_3
+: "(" 
+;
+unique_nonterminal_8
+: line unique_nonterminal_7 
+| unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_1
+: ")" 
+;
+unique_nonterminal_7
+: unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_4
+: ")(" 
+;
+unique_nonterminal_6
+: line unique_nonterminal_5 
+| ")" 
+;
+unique_nonterminal_5
+: ")" 
+;
+unique_nonterminal_9
+: "" 
+| unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+
+*******************************Unreachable
+line
+: unique_nonterminal_0 unique_nonterminal_2 
+| unique_nonterminal_3 unique_nonterminal_8 
+;
+unique_nonterminal_0
+: "(" 
+;
+unique_nonterminal_2
+: line unique_nonterminal_1 
+| ")" 
+;
+unique_nonterminal_3
+: "(" 
+;
+unique_nonterminal_8
+: line unique_nonterminal_7 
+| unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_1
+: ")" 
+;
+unique_nonterminal_7
+: unique_nonterminal_4 unique_nonterminal_6 
+;
+unique_nonterminal_4
+: ")(" 
+;
+unique_nonterminal_6
+: line unique_nonterminal_5 
+| ")" 
+;
+unique_nonterminal_5
+: ")" 
 ;
 unique_nonterminal_9
 : "" 
