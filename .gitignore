@@ -1,4 +1,6 @@
-build
+*build*
 .*.swp
 script.sh
 bin
+.idea
+output
